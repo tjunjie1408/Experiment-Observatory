@@ -9,7 +9,11 @@ dependencies = [
     "polars>=1.9",
     "scikit-learn>=1.5",
     "pydantic>=2.9",
+    "pyyaml>=6.0",
 ]
+
+[project.scripts]
+observatory = "observatory.cli:main"
 
 [dependency-groups]
 dev = [
@@ -18,6 +22,7 @@ dev = [
     "pytest>=8.3",
     "pytest-cov>=6.0",
     "pre-commit>=4.0",
+    "types-pyyaml>=6.0",
 ]
 
 [build-system]

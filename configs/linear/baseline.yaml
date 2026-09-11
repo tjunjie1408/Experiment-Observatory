@@ -1,0 +1,26 @@
+# Baseline configuration for the linear regression experiment.
+# Not yet consumed automatically -- `observatory.cli run` will load this
+# once the manifest/events/snapshots recording layer exists.
+#
+# true_bias/true_weight are chosen to match the optimum in the independent
+# fixture (b=1, w=2), so results here stay comparable to the hand-checked math tests.
+# 
+# n_samples/n_updates are working defaults for a visible demo run, not a
+# locked product default
+
+experiment_id: linear-baseline
+
+data:
+  generator: synthetic_linear_v1
+  n_samples: 50
+  true_bias: 1.0
+  true_weight: 2.0
+  noise_std: 0.3
+  seed: 42
+
+model:
+  algorithm: linear_regression_gradient_descent
+  initial_bias: 0.0
+  initial_weight: 0.0
+  learning_rate: 0.1
+  n_updates: 200

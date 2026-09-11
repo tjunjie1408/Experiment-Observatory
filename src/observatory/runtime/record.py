@@ -1,0 +1,373 @@
+"""Run lifecycle and recording layer.
+
+- Each run gets its own runId directory under a runs root; two runs from the
+  same config never share or overwrite files.
+- manifest.json/events.jsonl/snapshots.json are written atomically (temp file
+  + rename) so a crash or write failure never leaves a file that looks like
+  a valid completed artifact.
+- Non-finite values are never serialized; they are raised as errors before
+  any snapshot reaches disk.
+- SIGINT (Ctrl+C) during a run is caught at the per-step boundary and
+  recorded as failed + user_cancelled, not silently swallowed as a
+  successful exit.
+"""
+
+from __future__ import annotations
+
+import contextlib
+import json
+import os
+import secrets
+import signal
+import subprocess
+import time
+import types
+from collections.abc import Iterator
+from contextlib import contextmanager
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from pathlib import Path
+
+from observatory.data.synthetic import SyntheticLinearConfig, SyntheticLinearDataset, generate
+from observatory.models.linear_regression import iter_fit
+from observatory.runtime.schema import (
+    SCHEMA_VERSION,
+    CodeProvenance,
+    DataConfig,
+    DatasetSummary,
+    Event,
+    ModelConfig,
+    RunManifest,
+    Snapshot,
+)
+
+
+class CancelledError(Exception):
+    """Raised internally when SIGINT is observed at a safe step boundary."""
+
+
+class RunIOError(Exception):
+    """Raised when a write to the run directory fails; wraps the OSError cause."""
+
+
+_REPLACE_MAX_ATTEMPTS = 5
+_REPLACE_RETRY_DELAY_S = 0.05
+
+
+@dataclass(frozen=True)
+class RunResult:
+    run_id: str
+    run_dir: Path
+    manifest: RunManifest
+
+
+def _new_run_id(experiment_id: str) -> str:
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%f")
+    token = secrets.token_hex(4)
+    return f"{experiment_id}-{stamp}-{token}"
+
+
+def _atomic_write_json(path: Path, payload: object) -> None:
+    """Write JSON to `path` via temp file + os.replace, so readers never see a partial file.
+
+    On Windows, os.replace() onto an existing destination can transiently
+    fail with WinError 5 (Access is denied) if another process (AV scanner,
+    search indexer) briefly holds an open handle to the destination file
+    without FILE_SHARE_DELETE. This is not a real permission problem and
+    normally clears within milliseconds, so a short bounded retry is used
+    before treating it as a genuine write failure.
+    """
+    tmp_path = path.with_suffix(path.suffix + f".tmp{secrets.token_hex(4)}")
+    try:
+        tmp_path.write_text(json.dumps(payload, indent=2, allow_nan=False), encoding="utf-8")
+        last_exc: OSError | None = None
+        for attempt in range(_REPLACE_MAX_ATTEMPTS):
+            try:
+                tmp_path.replace(path)
+                return
+            except OSError as exc:
+                last_exc = exc
+                if attempt < _REPLACE_MAX_ATTEMPTS - 1:
+                    time.sleep(_REPLACE_RETRY_DELAY_S)
+        assert last_exc is not None
+        raise last_exc
+    except OSError as exc:
+        tmp_path.unlink(missing_ok=True)
+        raise RunIOError(f"failed to write {path}: {exc}") from exc
+
+
+def _append_jsonl(path: Path, line_payload: object) -> None:
+    try:
+        with path.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(line_payload, allow_nan=False))
+            fh.write("\n")
+            fh.flush()
+            os.fsync(fh.fileno())
+    except OSError as exc:
+        raise RunIOError(f"failed to append to {path}: {exc}") from exc
+
+
+def _get_code_provenance(repo_root: Path) -> CodeProvenance:
+    try:
+        commit = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"],
+            cwd=repo_root,
+            stderr=subprocess.DEVNULL,
+            text=True,
+        ).strip()
+        dirty_output = subprocess.check_output(
+            ["git", "status", "--porcelain"],
+            cwd=repo_root,
+            stderr=subprocess.DEVNULL,
+            text=True,
+        )
+        return CodeProvenance(git_commit=commit, git_dirty=bool(dirty_output.strip()))
+    except (OSError, subprocess.CalledProcessError):
+        return CodeProvenance(unavailable_reason="git metadata unavailable in this environment")
+
+
+class RunRecorder:
+    """Owns one run directory and writes manifest/events/snapshots for it."""
+
+    def __init__(
+        self, run_dir: Path, manifest: RunManifest, dataset: SyntheticLinearDataset
+    ) -> None:
+        self.run_dir = run_dir
+        self.manifest = manifest
+        self.dataset = dataset
+        self._seq = 0
+        self._snapshots: list[Snapshot] = []
+
+    @property
+    def manifest_path(self) -> Path:
+        return self.run_dir / "manifest.json"
+
+    @property
+    def events_path(self) -> Path:
+        return self.run_dir / "events.jsonl"
+
+    @property
+    def snapshots_path(self) -> Path:
+        return self.run_dir / "snapshots.json"
+
+    def _next_seq(self) -> int:
+        self._seq += 1
+        return self._seq
+
+    def _write_manifest(self, manifest: RunManifest) -> None:
+        self.manifest = manifest
+        _atomic_write_json(self.manifest_path, json.loads(manifest.model_dump_json(by_alias=True)))
+
+    def _write_event(self, event: Event) -> None:
+        _append_jsonl(self.events_path, json.loads(event.model_dump_json(by_alias=True)))
+
+    def _write_snapshots(self) -> None:
+        payload = [json.loads(s.model_dump_json(by_alias=True)) for s in self._snapshots]
+        _atomic_write_json(self.snapshots_path, payload)
+
+    def record_created(self) -> None:
+        self._write_manifest(self.manifest)
+        self._write_event(
+            Event(run_id=self.manifest.run_id, seq=self._next_seq(), kind="run.created")
+        )
+
+    def record_started(self) -> None:
+        self._write_manifest(self.manifest.model_copy(update={"status": "running"}))
+        self._write_event(
+            Event(run_id=self.manifest.run_id, seq=self._next_seq(), kind="run.started")
+        )
+
+    def record_step(self, snapshot: Snapshot) -> None:
+        self._snapshots.append(snapshot)
+        self._write_snapshots()
+        self._write_manifest(
+            self.manifest.model_copy(update={"n_snapshots_written": len(self._snapshots)})
+        )
+        self._write_event(
+            Event(
+                run_id=self.manifest.run_id,
+                seq=self._next_seq(),
+                kind="step.recorded",
+                step=snapshot.step,
+            )
+        )
+
+    def record_completed(self, *, stop_reason: str) -> None:
+        last_step = self._snapshots[-1].step if self._snapshots else None
+        self._write_manifest(
+            self.manifest.model_copy(
+                update={
+                    "status": "completed",
+                    "stop_reason": stop_reason,
+                    "last_valid_step": last_step,
+                }
+            )
+        )
+        self._write_event(
+            Event(run_id=self.manifest.run_id, seq=self._next_seq(), kind="run.completed")
+        )
+
+    def record_failed(self, *, stop_reason: str, message: str) -> None:
+        last_step = self._snapshots[-1].step if self._snapshots else None
+        self._write_manifest(
+            self.manifest.model_copy(
+                update={
+                    "status": "failed",
+                    "stop_reason": stop_reason,
+                    "last_valid_step": last_step,
+                    "error_message": message,
+                }
+            )
+        )
+        self._write_event(
+            Event(
+                run_id=self.manifest.run_id,
+                seq=self._next_seq(),
+                kind="run.failed",
+                message=message,
+            )
+        )
+
+
+@contextmanager
+def _sigint_guard() -> Iterator[list[bool]]:
+    """Install a SIGINT handler that records the interrupt instead of raising
+    immediately, so the caller can stop at the next safe step boundary.
+    There is no guaranteed millisecond deadline for the stop."""
+    flag: list[bool] = [False]
+
+    def _handler(signum: int, frame: types.FrameType | None) -> None:
+        flag[0] = True
+
+    previous = signal.getsignal(signal.SIGINT)
+    signal.signal(signal.SIGINT, _handler)
+    try:
+        yield flag
+    finally:
+        signal.signal(signal.SIGINT, previous)
+
+
+def create_run(
+    *,
+    experiment_id: str,
+    data_config: SyntheticLinearConfig,
+    model_cfg: ModelConfig,
+    runs_root: Path,
+    repo_root: Path,
+    max_observed_samples: int = 5,
+) -> RunRecorder:
+    """Validate config, generate data, and write the `created` manifest.
+
+    Raises ValueError before any run directory exists if config is invalid:
+    no new run's side effects appear for a rejected config.
+    """
+    dataset = generate(data_config)  # raises ValueError for invalid config
+
+    run_id = _new_run_id(experiment_id)
+    run_dir = runs_root / run_id
+    run_dir.mkdir(parents=True, exist_ok=False)
+
+    observed_sample_ids = dataset.sample_ids[: min(max_observed_samples, len(dataset.sample_ids))]
+
+    manifest = RunManifest(
+        run_id=run_id,
+        experiment_id=experiment_id,
+        created_at=datetime.now(UTC).isoformat(),
+        status="created",
+        data_config=DataConfig(
+            generator=data_config.__class__.__name__,
+            n_samples=data_config.n_samples,
+            true_bias=data_config.true_bias,
+            true_weight=data_config.true_weight,
+            noise_std=data_config.noise_std,
+            seed=data_config.seed,
+        ),
+        dataset=DatasetSummary(
+            generator_id=dataset.generator_id,
+            sample_ids=dataset.sample_ids,
+            x=[float(v) for v in dataset.x],
+            y=[float(v) for v in dataset.y],
+        ),
+        training_config=model_cfg,
+        code_provenance=_get_code_provenance(repo_root),
+        observed_sample_ids=observed_sample_ids,
+    )
+
+    recorder = RunRecorder(run_dir, manifest, dataset)
+    recorder.record_created()
+    return recorder
+
+
+def run_training(recorder: RunRecorder) -> RunManifest:
+    """Execute gradient descent for the run, recording every step.
+
+    A finite diverging trajectory that exhausts its budget is still
+    `completed` with stop_reason=max_steps (never silently "converged"); a
+    non-finite value or IO failure is `failed`; SIGINT observed at a step
+    boundary is `failed` + `user_cancelled`.
+    """
+    dataset = recorder.dataset
+    manifest = recorder.manifest
+    cfg = manifest.training_config
+
+    recorder.record_started()
+
+    observed_ids = set(manifest.observed_sample_ids)
+    id_index = {sid: i for i, sid in enumerate(dataset.sample_ids)}
+
+    try:
+        with _sigint_guard() as interrupted:
+            try:
+                step_iter = iter_fit(
+                    dataset.x,
+                    dataset.y,
+                    learning_rate=cfg.learning_rate,
+                    n_updates=cfg.n_updates,
+                    b0=cfg.initial_bias,
+                    w0=cfg.initial_weight,
+                )
+                for state in step_iter:
+                    if interrupted[0]:
+                        raise CancelledError
+
+                    observed_predictions = {
+                        sid: float(state.predictions[id_index[sid]]) for sid in observed_ids
+                    }
+                    snapshot = Snapshot(
+                        step=state.step,
+                        b=state.b,
+                        w=state.w,
+                        gradient_b=state.gradient_b,
+                        gradient_w=state.gradient_w,
+                        train_mse=state.mse,
+                        observed_predictions=observed_predictions,
+                    )
+                    recorder.record_step(snapshot)
+            except FloatingPointError as exc:
+                recorder.record_failed(stop_reason="numerical_error", message=str(exc))
+                return recorder.manifest
+
+            if interrupted[0]:
+                raise CancelledError
+
+        recorder.record_completed(stop_reason="max_steps")
+    except CancelledError:
+        recorder.record_failed(stop_reason="user_cancelled", message="interrupted by user (SIGINT)")
+    except RunIOError as exc:
+        # Best-effort: try to still mark failed; if that also fails, the
+        # manifest is left in its last successfully-written state, which
+        # readers must treat as "incomplete, status unverified".
+        with contextlib.suppress(RunIOError):
+            recorder.record_failed(stop_reason="io_error", message=str(exc))
+    return recorder.manifest
+
+
+__all__ = [
+    "SCHEMA_VERSION",
+    "CancelledError",
+    "RunIOError",
+    "RunRecorder",
+    "RunResult",
+    "create_run",
+    "run_training",
+]

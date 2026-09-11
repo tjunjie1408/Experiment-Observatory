@@ -1,0 +1,20 @@
+# Three-rate comparison, learning rate = 0.25 (converges within the shared budget).
+# Same data, initialization, and update budget as slow.yaml and diverge.yaml;
+# only learning_rate differs.
+
+experiment_id: linear-lr-converge
+
+data:
+  generator: synthetic_linear_v1
+  n_samples: 50
+  true_bias: 1.0
+  true_weight: 2.0
+  noise_std: 0.3
+  seed: 42
+
+model:
+  algorithm: linear_regression_gradient_descent
+  initial_bias: 0.0
+  initial_weight: 0.0
+  learning_rate: 0.25
+  n_updates: 80

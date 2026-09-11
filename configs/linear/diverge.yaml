@@ -1,0 +1,25 @@
+# Three-rate comparison, learning rate = 1.5 (finite but growing error across
+# the shared budget -- an overshoot/divergence trajectory, not a numerical
+# failure). Same data, initialization, and update budget as converge.yaml
+# and slow.yaml.
+#
+# This rate is chosen to stay finite for n_updates=80 on this fixture-derived
+# dataset; a much larger rate would instead trigger a numerical_error failure
+# and is intentionally out of scope for this "diverges but finite" config.
+
+experiment_id: linear-lr-diverge
+
+data:
+  generator: synthetic_linear_v1
+  n_samples: 50
+  true_bias: 1.0
+  true_weight: 2.0
+  noise_std: 0.3
+  seed: 42
+
+model:
+  algorithm: linear_regression_gradient_descent
+  initial_bias: 0.0
+  initial_weight: 0.0
+  learning_rate: 1.5
+  n_updates: 80
