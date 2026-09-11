@@ -9,12 +9,7 @@ import { loadRunBundle, BundleLoadError } from "./lib/loader";
 import { PlaybackController, type PlaybackState } from "./lib/playback";
 import { renderScatterView, renderResidualsView, renderLossCurveView, renderContourView } from "./lib/views";
 import type { RunBundle } from "./lib/schema";
-
-const AVAILABLE_RUNS: { id: string; label: string; path: string }[] = [
-  { id: "converge", label: "Converge (lr=0.25)", path: "/runs/converge" },
-  { id: "slow", label: "Slow (lr=0.001)", path: "/runs/slow" },
-  { id: "diverge", label: "Diverge (lr=1.5)", path: "/runs/diverge" },
-];
+import { AVAILABLE_RUNS } from "./lib/availableRuns";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (app === null) throw new Error("missing #app root element");

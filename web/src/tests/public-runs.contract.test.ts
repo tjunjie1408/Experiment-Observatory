@@ -17,15 +17,39 @@
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 import { validateBundle } from "../lib/schema";
+import { AVAILABLE_RUNS } from "../lib/availableRuns";
 
 const RUNS_DIR = fileURLToPath(new URL("../../public/runs", import.meta.url));
+const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 
-// Mirrors AVAILABLE_RUNS in main.ts. Kept as a separate literal (not an
-// import from main.ts) because main.ts has module-level side effects that
-// assume a DOM/document is present.
-const SHIPPED_RUN_IDS = ["converge", "slow", "diverge"];
+// Single source of truth shared with main.ts (web/src/lib/availableRuns.ts),
+// so a bundle added to the UI without updating this test (or vice versa)
+// is no longer possible.
+const SHIPPED_RUN_IDS = AVAILABLE_RUNS.map((run) => run.id);
+
+/**
+ * True if `commit` resolves to an actual object in this repository's git
+ * history. Uses `git cat-file -e`, which exits 0 iff the object exists
+ * and is readable, without printing its contents. This is the check that
+ * closes the gap the previous version of this test left open: a
+ * plausible-looking but fabricated or dangling `gitCommit` value (e.g.
+ * copy-pasted from a different clone, or from a rebased/deleted branch)
+ * would pass the old `gitCommit !== null` assertion but fail this one.
+ */
+function commitExistsInRepo(commit: string): boolean {
+  try {
+    execFileSync("git", ["cat-file", "-e", `${commit}^{commit}`], {
+      cwd: REPO_ROOT,
+      stdio: "ignore",
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function loadBundleFromDisk(runId: string): {
   manifestRaw: unknown;
@@ -36,8 +60,8 @@ function loadBundleFromDisk(runId: string): {
   const manifestRaw = JSON.parse(readFileSync(`${dir}/manifest.json`, "utf-8"));
   const eventsRaw = readFileSync(`${dir}/events.jsonl`, "utf-8")
     .split("\n")
-    .filter((line) => line.trim().length > 0)
-    .map((line) => JSON.parse(line));
+    .filter((line: string) => line.trim().length > 0)
+    .map((line: string) => JSON.parse(line));
   const snapshotsRaw = JSON.parse(readFileSync(`${dir}/snapshots.json`, "utf-8"));
   return { manifestRaw, eventsRaw, snapshotsRaw };
 }
@@ -57,16 +81,18 @@ describe("shipped demo bundles (public/runs)", () => {
       codeProvenance: { gitCommit: string | null; gitDirty: boolean | null; unavailableReason: string | null };
     };
 
-    // A bundle's provenance must either point at a real, clean commit, or
-    // explicitly say why it can't (this test does not check that the
-    // commit actually exists in the repo -- that requires git and is
-    // exercised by the regeneration procedure in HANDOFF.md, not by this
-    // fast unit test). What it does catch: a dirty-tree export (gitDirty
-    // === true) silently shipped as if it were reproducible, which is
-    // exactly the defect this test was added to prevent from recurring.
+    // A bundle's provenance must either point at a real, clean, resolvable
+    // commit, or explicitly say why it can't. "Resolvable" is verified
+    // here (not deferred to a separate CI step) via `git cat-file -e`
+    // against this checkout's object database: a dirty-tree export
+    // (gitDirty === true) or a fabricated/dangling commit hash would both
+    // fail this test, which is exactly the defect class this test exists
+    // to prevent from recurring.
     if (manifest.codeProvenance.unavailableReason === null) {
-      expect(manifest.codeProvenance.gitCommit).not.toBeNull();
-      expect(manifest.codeProvenance.gitDirty).toBe(false);
+      const { gitCommit, gitDirty } = manifest.codeProvenance;
+      expect(gitCommit).not.toBeNull();
+      expect(gitDirty).toBe(false);
+      expect(commitExistsInRepo(gitCommit as string)).toBe(true);
     }
   });
 
