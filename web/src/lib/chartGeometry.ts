@@ -49,7 +49,11 @@ export function segmentConsecutivePoints<
   for (const point of points) {
     const current = segments.at(-1);
     const previous = current?.at(-1);
-    if (previous === undefined || point.step !== previous.step + 1) {
+    if (
+      current === undefined ||
+      previous === undefined ||
+      point.step !== previous.step + 1
+    ) {
       segments.push([point]);
     } else {
       current.push(point);
