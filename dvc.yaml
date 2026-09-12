@@ -1,0 +1,10 @@
+stages:
+  prepare-auto-mpg:
+    cmd: >-
+      uv run observatory prepare-dataset datasets/auto-mpg/raw/auto-mpg.data
+      datasets/auto-mpg/processed/weight-mpg.csv
+    deps:
+      - datasets/auto-mpg/raw/auto-mpg.data
+      - src/observatory/data/auto_mpg.py
+    outs:
+      - datasets/auto-mpg/processed/weight-mpg.csv

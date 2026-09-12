@@ -19,7 +19,7 @@ src/observatory/
   models/             NumPy linear regression
   runtime/            run lifecycle, recording, schema, and static export
   api/                reserved for the deferred V1 local API
-  cli.py              run, run-all, export, and train-dataset commands
+  cli.py              run, export, prepare-dataset, and dataset commands
 tests/                numerical, contract, data, and run tests
 configs/linear/       synthetic replay and external dataset training configs
 web/                   Svelte 5 static replay application and frontend tests
@@ -55,6 +55,19 @@ npm run build
 ```
 
 `npm test` currently retains three intentional failing provenance checks until the shipped bundles can be regenerated from a clean Git working tree. The other frontend suites pass.
+
+## DVC data recovery
+
+Auto MPG raw files and the processed training table are DVC-managed. Git stores the dataset/version manifests, `raw.dvc`, `dvc.yaml`, and `dvc.lock`; dataset bytes are pushed to the configured DVC remote.
+
+```bash
+uv sync --locked
+uv run dvc pull
+uv run dvc repro
+uv run pytest -q tests/test_external_dataset.py
+```
+
+The default remote points to the project Google Drive folder. OAuth credentials are local-only and must never be committed. A local-remote push and empty-cache restore have been verified; Google Drive upload remains pending until a project-owned OAuth client is configured.
 
 ## Pre-commit checks
 

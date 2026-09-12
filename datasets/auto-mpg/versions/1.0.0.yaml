@@ -1,0 +1,120 @@
+dataset_id: uci-auto-mpg
+version: 1.0.0
+creator: R. Quinlan
+citation: >-
+  Quinlan, R. (1993). Auto MPG [Dataset]. UCI Machine Learning Repository.
+  https://doi.org/10.24432/C5859H.
+authoritative_page: https://archive.ics.uci.edu/dataset/9/auto+mpg
+doi: 10.24432/C5859H
+license:
+  name: CC BY 4.0
+  url: https://creativecommons.org/licenses/by/4.0/
+retrieved_at: "2026-09-12"
+source_url: https://archive.ics.uci.edu/static/public/9/auto+mpg.zip
+row_count: 398
+selection:
+  feature: weight
+  target: mpg
+split:
+  strategy: none
+  identity: all-398-rows
+raw_schema:
+  - {
+      name: mpg,
+      role: target,
+      type: float64,
+      nullable: false,
+      unit: miles per gallon,
+    }
+  - {
+      name: cylinders,
+      role: unused_feature,
+      type: integer,
+      nullable: false,
+      unit: null,
+    }
+  - {
+      name: displacement,
+      role: unused_feature,
+      type: float64,
+      nullable: false,
+      unit: cubic inches,
+    }
+  - {
+      name: horsepower,
+      role: unused_feature,
+      type: float64,
+      nullable: true,
+      unit: horsepower,
+    }
+  - {
+      name: weight,
+      role: feature,
+      type: float64,
+      nullable: false,
+      unit: pounds,
+    }
+  - {
+      name: acceleration,
+      role: unused_feature,
+      type: float64,
+      nullable: false,
+      unit: seconds to 60 mph,
+    }
+  - {
+      name: model_year,
+      role: unused_feature,
+      type: integer,
+      nullable: false,
+      unit: year offset from 1900,
+    }
+  - {
+      name: origin,
+      role: unused_feature,
+      type: integer,
+      nullable: false,
+      unit: null,
+    }
+  - {
+      name: car_name,
+      role: unused_id,
+      type: string,
+      nullable: false,
+      unit: null,
+    }
+artifacts:
+  - path: raw/auto+mpg.zip
+    role: download
+    bytes: 14873
+    sha256: 5fc1507522b73b8050d3aa45df51eefe1b666ae5f428a5f1347b6483339f1003
+  - path: raw/auto-mpg.data
+    role: raw_data
+    archive_member: auto-mpg.data
+    bytes: 30286
+    sha256: 48b830e11feee5572525f8f1691ddb9d38d3d7b7063edcd8fca672c2a5e17d8d
+  - path: processed/weight-mpg.csv
+    role: processed
+    parent_version: 1.0.0
+    row_count: 398
+    bytes: 16456
+    sha256: b9b64882d6714f38fa5e368e855b1a25996b67ad9d053efde594fa28aa541607
+    schema:
+      - { name: sample_id, type: string, nullable: false }
+      - { name: weight, type: float64, nullable: false, unit: pounds }
+      - { name: mpg, type: float64, nullable: false, unit: miles per gallon }
+      - { name: weight_standardized, type: float64, nullable: false }
+    preprocessing:
+      source_artifact: raw/auto-mpg.data
+      row_order: source row order
+      sample_id: "row-{1-based source row number, zero-padded to 4 digits}"
+      weight_mean: 2970.424623115578
+      weight_std: 845.7772335198174
+      standard_deviation_ddof: 0
+      formula: (weight - weight_mean) / weight_std
+      target: unchanged mpg
+      numeric_type: float64
+    serialization:
+      encoding: UTF-8
+      newline: LF
+      delimiter: comma
+      float_format: 17 significant digits

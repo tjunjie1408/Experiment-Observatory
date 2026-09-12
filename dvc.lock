@@ -1,0 +1,20 @@
+schema: '2.0'
+stages:
+  prepare-auto-mpg:
+    cmd: >-
+      uv run observatory prepare-dataset datasets/auto-mpg/raw/auto-mpg.data
+      datasets/auto-mpg/processed/weight-mpg.csv
+    deps:
+    - path: datasets/auto-mpg/raw/auto-mpg.data
+      hash: md5
+      md5: b858f4580d0066c48e260dd3b96f1ed8
+      size: 30286
+    - path: src/observatory/data/auto_mpg.py
+      hash: md5
+      md5: 3058e01d7763195b70bd005dbee12e38
+      size: 15545
+    outs:
+    - path: datasets/auto-mpg/processed/weight-mpg.csv
+      hash: md5
+      md5: 7b28ce51dc0e5bfc5be3c51b28a502cc
+      size: 16456

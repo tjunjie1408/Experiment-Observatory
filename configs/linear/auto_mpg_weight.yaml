@@ -1,0 +1,20 @@
+# Replay: uv run observatory run-dataset configs/linear/auto_mpg_weight.yaml
+# Check-only training remains available through the train-dataset command.
+experiment_id: auto-mpg-weight
+
+data:
+  dataset: uci-auto-mpg
+  version: 1.0.0
+  version_manifest: datasets/auto-mpg/versions/1.0.0.yaml
+  processed_artifact: datasets/auto-mpg/processed/weight-mpg.csv
+  feature: weight
+  target: mpg
+  preprocessing: population_standardization
+  split: none
+
+model:
+  algorithm: linear_regression_gradient_descent
+  initial_bias: 0.0
+  initial_weight: 0.0
+  learning_rate: 0.1
+  n_updates: 200

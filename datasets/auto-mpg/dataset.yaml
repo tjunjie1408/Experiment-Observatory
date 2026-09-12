@@ -1,0 +1,13 @@
+dataset_id: uci-auto-mpg
+title: Auto MPG
+creator: R. Quinlan
+citation: >-
+  Quinlan, R. (1993). Auto MPG [Dataset]. UCI Machine Learning Repository.
+  https://doi.org/10.24432/C5859H.
+authoritative_page: https://archive.ics.uci.edu/dataset/9/auto+mpg
+doi: 10.24432/C5859H
+license:
+  name: CC BY 4.0
+  url: https://creativecommons.org/licenses/by/4.0/
+versions:
+  - 1.0.0

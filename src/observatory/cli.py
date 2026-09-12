@@ -29,6 +29,7 @@ from observatory.data.auto_mpg import (
     AutoMpgDataset,
     PreparedAutoMpgDataset,
     load_auto_mpg,
+    prepare_auto_mpg,
     standardize_weight,
 )
 from observatory.data.synthetic import SyntheticLinearConfig
@@ -302,6 +303,17 @@ def run_one(config_path: Path, runs_root: Path) -> RunManifest:
     return run_training(recorder)
 
 
+def _cmd_prepare_dataset(args: argparse.Namespace) -> int:
+    try:
+        result = prepare_auto_mpg(Path(args.raw_data), Path(args.output))
+    except ValueError as exc:
+        print(f"preparation rejected: {exc}", file=sys.stderr)
+        return 2
+
+    print(f"prepared Auto MPG: rows={result.row_count} sha256={result.sha256} output={args.output}")
+    return 0
+
+
 def _cmd_train_dataset(args: argparse.Namespace) -> int:
     try:
         result = train_dataset(Path(args.config))
@@ -377,6 +389,14 @@ def _cmd_export(args: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="observatory")
     subparsers = parser.add_subparsers(dest="command", required=True)
+
+    prepare_dataset_parser = subparsers.add_parser(
+        "prepare-dataset",
+        help="Prepare the deterministic Auto MPG DVC pipeline output.",
+    )
+    prepare_dataset_parser.add_argument("raw_data", help="Path to the pinned auto-mpg.data file.")
+    prepare_dataset_parser.add_argument("output", help="Path for the processed weight-to-MPG CSV.")
+    prepare_dataset_parser.set_defaults(func=_cmd_prepare_dataset)
 
     train_dataset_parser = subparsers.add_parser(
         "train-dataset",
