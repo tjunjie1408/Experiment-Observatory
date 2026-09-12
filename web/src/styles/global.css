@@ -463,6 +463,15 @@ main {
   fill-opacity: 0.85;
 }
 
+.recorded-step-point {
+  fill: var(--run-a);
+  opacity: 0.65;
+}
+
+.run-b .recorded-step-point {
+  fill: var(--run-b);
+}
+
 .current-step-marker {
   fill: var(--accent);
   stroke: var(--surface);

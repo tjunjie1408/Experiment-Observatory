@@ -3,6 +3,7 @@ import {
   finitePoints,
   linearScale,
   niceDomain,
+  segmentConsecutivePoints,
   serializePoints,
 } from "../lib/chartGeometry";
 
@@ -24,7 +25,7 @@ describe("chart geometry", () => {
     expect(linearScale([3, 3], [10, 30])(3)).toBe(10);
   });
 
-  it("keeps only finite recorded points without interpolating gaps", () => {
+  it("keeps only finite recorded points and separates gaps", () => {
     const points = finitePoints([
       { x: 0, y: 4, id: "step-0" },
       { x: 7, y: Number.NaN, id: "step-7" },
@@ -35,8 +36,20 @@ describe("chart geometry", () => {
       { x: 0, y: 4, id: "step-0" },
       { x: 20, y: 1, id: "step-20" },
     ]);
-    expect(serializePoints(points, (value) => value * 2, (value) => value + 1)).toBe(
-      "0,5 40,2",
-    );
+    const steppedPoints = points.map((point) => ({
+      ...point,
+      step: Number(point.id.slice(5)),
+    }));
+    expect(segmentConsecutivePoints(steppedPoints)).toEqual([
+      [{ x: 0, y: 4, id: "step-0", step: 0 }],
+      [{ x: 20, y: 1, id: "step-20", step: 20 }],
+    ]);
+    expect(
+      serializePoints(
+        steppedPoints,
+        (value) => value * 2,
+        (value) => value + 1,
+      ),
+    ).toBe("0,5 40,2");
   });
 });

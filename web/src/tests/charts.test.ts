@@ -47,7 +47,10 @@ describe("declarative charts", () => {
     const html = render(LossCurve, { props: { bundle, currentStep: 1 } }).body;
 
     expect(html).toContain('class="loss-curve-line"');
-    expect(html).toContain('data-recorded-steps="0 7 20"');
+    expect(html).toContain('data-recorded-steps="0"');
+    expect(html).toContain('data-recorded-steps="7"');
+    expect(html).toContain('data-recorded-steps="20"');
+    expect(html).not.toContain('data-recorded-steps="0 7"');
     expect(html).toContain('class="current-step-marker"');
     expect(html).toContain('data-step="7"');
     expect(html).not.toContain('data-step="1"');
@@ -67,7 +70,9 @@ describe("declarative charts", () => {
 
     expect(html).toContain("<rect");
     expect(html).toContain('class="trajectory-line"');
-    expect(html).toContain('data-recorded-steps="0 7"');
+    expect(html).toContain('data-recorded-steps="0"');
+    expect(html).toContain('data-recorded-steps="7"');
+    expect(html).not.toContain('data-recorded-steps="0 7"');
     expect(html).toContain('class="current-step-marker"');
     expect(html).toContain('data-step="7"');
     expect(html).not.toMatch(/NaN|Infinity/);

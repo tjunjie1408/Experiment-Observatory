@@ -6,6 +6,7 @@
     finitePoints,
     linearScale,
     niceDomain,
+    segmentConsecutivePoints,
     serializePoints,
   } from "../../lib/chartGeometry";
   import { computeContourGrid } from "../../lib/math";
@@ -63,10 +64,12 @@
       ];
     }),
   );
-  $: trajectoryPoints = serializePoints(trajectory, bScale, wScale);
+  $: trajectorySegments = segmentConsecutivePoints(trajectory);
   $: current = bundle.snapshots[currentStep];
   $: hasFiniteCurrent =
-    current !== undefined && Number.isFinite(current.b) && Number.isFinite(current.w);
+    current !== undefined &&
+    Number.isFinite(current.b) &&
+    Number.isFinite(current.w);
 
   const cellWidth =
     (CHART_WIDTH - CHART_MARGIN.left - CHART_MARGIN.right) / resolution;
@@ -75,7 +78,12 @@
 </script>
 
 <div class="chart-viewport">
-  <svg viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`} width="100%" height="100%" role="img">
+  <svg
+    viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
+    width="100%"
+    height="100%"
+    role="img"
+  >
     {#each cells as cell}
       <rect
         x={cell.x}
@@ -86,11 +94,22 @@
         stroke="none"
       />
     {/each}
-    <polyline
-      points={trajectoryPoints}
-      class="trajectory-line"
-      data-recorded-steps={trajectory.map((point) => point.step).join(" ")}
-    />
+    {#each trajectorySegments as segment}
+      <polyline
+        points={serializePoints(segment, bScale, wScale)}
+        class="trajectory-line"
+        data-recorded-steps={segment.map((point) => point.step).join(" ")}
+      />
+    {/each}
+    {#each trajectory as point}
+      <circle
+        cx={bScale(point.x)}
+        cy={wScale(point.y)}
+        r="1.5"
+        class="recorded-step-point"
+        data-step={point.step}
+      />
+    {/each}
     {#if current && hasFiniteCurrent}
       <circle
         cx={bScale(current.b)}

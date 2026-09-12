@@ -6,6 +6,7 @@
     finitePoints,
     linearScale,
     niceDomain,
+    segmentConsecutivePoints,
     serializePoints,
   } from "../../lib/chartGeometry";
   import type { RunBundle } from "../../lib/schema";
@@ -31,7 +32,7 @@
     niceDomain(bundle.snapshots.map((snapshot) => snapshot.trainMse)),
     [CHART_HEIGHT - CHART_MARGIN.bottom, CHART_MARGIN.top],
   );
-  $: curvePoints = serializePoints(recorded, xScale, yScale);
+  $: segments = segmentConsecutivePoints(recorded);
   $: current = bundle.snapshots[currentStep];
   $: hasFiniteCurrent =
     current !== undefined &&
@@ -40,12 +41,28 @@
 </script>
 
 <div class="chart-viewport">
-  <svg viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`} width="100%" height="100%" role="img">
-    <polyline
-      points={curvePoints}
-      class="loss-curve-line"
-      data-recorded-steps={recorded.map((point) => point.step).join(" ")}
-    />
+  <svg
+    viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
+    width="100%"
+    height="100%"
+    role="img"
+  >
+    {#each segments as segment}
+      <polyline
+        points={serializePoints(segment, xScale, yScale)}
+        class="loss-curve-line"
+        data-recorded-steps={segment.map((point) => point.step).join(" ")}
+      />
+    {/each}
+    {#each recorded as point}
+      <circle
+        cx={xScale(point.x)}
+        cy={yScale(point.y)}
+        r="1.5"
+        class="recorded-step-point"
+        data-step={point.step}
+      />
+    {/each}
     {#if current && hasFiniteCurrent}
       <circle
         cx={xScale(current.step)}
@@ -55,7 +72,8 @@
         data-step={current.step}
       />
     {/if}
-    <text x={CHART_WIDTH / 2} y={CHART_HEIGHT - 6} class="axis-label">step</text>
+    <text x={CHART_WIDTH / 2} y={CHART_HEIGHT - 6} class="axis-label">step</text
+    >
     <text
       x="12"
       y={CHART_HEIGHT / 2}

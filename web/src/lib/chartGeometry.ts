@@ -42,6 +42,22 @@ export function finitePoints<T extends ChartPoint>(points: readonly T[]): T[] {
   );
 }
 
+export function segmentConsecutivePoints<
+  T extends ChartPoint & { step: number },
+>(points: readonly T[]): T[][] {
+  const segments: T[][] = [];
+  for (const point of points) {
+    const current = segments.at(-1);
+    const previous = current?.at(-1);
+    if (previous === undefined || point.step !== previous.step + 1) {
+      segments.push([point]);
+    } else {
+      current.push(point);
+    }
+  }
+  return segments;
+}
+
 export function serializePoints(
   points: readonly ChartPoint[],
   xScale: (value: number) => number,
