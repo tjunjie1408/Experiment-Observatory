@@ -136,18 +136,6 @@ def _load_dataset_run_input(config_path: Path) -> _DatasetRunInput:
             raise ConfigError(f"{config_path}: experiment_id must be a non-empty string")
         if not isinstance(data_raw, dict) or not isinstance(model_raw, dict):
             raise ConfigError(f"{config_path}: data and model must be mappings")
-        expected_data = {
-            "dataset": "uci-auto-mpg",
-            "feature": "weight",
-            "target": "mpg",
-            "preprocessing": "population_standardization",
-            "split": "none",
-        }
-        for field, expected in expected_data.items():
-            if data_raw.get(field) != expected:
-                raise ConfigError(
-                    f"{config_path}: data.{field} must be {expected!r} for this command"
-                )
         version_manifest_value = data_raw["version_manifest"]
         processed_artifact_value = data_raw["processed_artifact"]
         if not isinstance(version_manifest_value, str) or not version_manifest_value:
@@ -188,11 +176,21 @@ def _load_dataset_run_input(config_path: Path) -> _DatasetRunInput:
 
     try:
         dataset = load_auto_mpg(_resolve_repo_path(version_manifest_value))
-        configured_version = data_raw.get("version")
-        if configured_version != dataset.version:
-            raise ValueError(
-                f"data.version {configured_version!r} does not match verified version {dataset.version!r}"
-            )
+        expected_config_identity = {
+            "dataset": dataset.dataset_id,
+            "version": dataset.version,
+            "feature": dataset.source_feature,
+            "target": dataset.target,
+            "preprocessing": dataset.preprocessing,
+            "split": dataset.split_strategy,
+        }
+        for field, verified_value in expected_config_identity.items():
+            configured_value = data_raw.get(field)
+            if configured_value != verified_value:
+                raise ValueError(
+                    f"data.{field} {configured_value!r} does not match "
+                    f"verified value {verified_value!r}"
+                )
         processed_path = _resolve_repo_path(processed_artifact_value)
         processed_hash = hashlib.sha256(processed_path.read_bytes()).hexdigest()
         if processed_hash != dataset.processed_artifact_sha256:
@@ -258,16 +256,16 @@ def run_dataset(config_path: Path, runs_root: Path) -> RunManifest:
                 dataset_version=dataset.version,
                 version_manifest_sha256=dataset.version_manifest_sha256,
                 processed_artifact_sha256=dataset.processed_artifact_sha256,
-                source_feature="weight",
-                feature="weight_standardized",
-                feature_unit="population standard deviations",
-                target="mpg",
-                target_unit="miles per gallon",
-                preprocessing="population_standardization",
-                split="all-398-rows",
+                source_feature=dataset.source_feature,
+                feature=dataset.feature,
+                feature_unit=dataset.feature_unit,
+                target=dataset.target,
+                target_unit=dataset.target_unit,
+                preprocessing=dataset.preprocessing,
+                split=dataset.split,
             ),
             dataset=prepared,
-            dataset_identity=f"{dataset.dataset_id}@{dataset.version}:weight_standardized",
+            dataset_source_id=dataset.source_id,
             model_cfg=run_input.model_config,
             runs_root=runs_root,
             repo_root=REPO_ROOT,

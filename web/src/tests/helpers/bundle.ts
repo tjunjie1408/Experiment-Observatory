@@ -78,8 +78,8 @@ export function makeExternalBundle(
     source: "external_dataset",
     datasetId: "auto-mpg",
     datasetVersion: "1.0.0",
-    versionManifestSha256: "version-manifest-sha256",
-    processedArtifactSha256: "processed-artifact-sha256",
+    versionManifestSha256: "a".repeat(64),
+    processedArtifactSha256: "b".repeat(64),
     sourceFeature: "weight",
     feature: "weight_standardized",
     featureUnit: "population standard deviations",
@@ -89,7 +89,12 @@ export function makeExternalBundle(
     split: "all-398-rows",
     ...dataConfigOverrides,
   };
-  bundle.manifest.dataset.generatorId = "auto-mpg";
+  bundle.manifest.dataset = {
+    sourceId: "auto-mpg",
+    sampleIds: bundle.manifest.dataset.sampleIds,
+    x: bundle.manifest.dataset.x,
+    y: bundle.manifest.dataset.y,
+  };
   bundle.events.forEach((event) => {
     event.schemaVersion = 2;
   });

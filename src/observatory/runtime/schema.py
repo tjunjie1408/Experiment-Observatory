@@ -70,11 +70,24 @@ class ModelConfig(BaseModel):
 
 
 class DatasetSummary(BaseModel):
-    """Real generated data embedded in the manifest so the run is self-contained."""
+    """Schema-v1 synthetic dataset summary."""
 
     model_config = ConfigDict(frozen=True, populate_by_name=True, alias_generator=_camel)
 
     generator_id: str
+    sample_ids: list[str]
+    x: list[float]
+    y: list[float]
+
+
+class ExternalDatasetSummary(BaseModel):
+    """Schema-v2 external dataset summary with no synthetic generator identity."""
+
+    model_config = ConfigDict(
+        frozen=True, populate_by_name=True, alias_generator=_camel, extra="forbid"
+    )
+
+    source_id: str
     sample_ids: list[str]
     x: list[float]
     y: list[float]
@@ -102,7 +115,7 @@ class RunManifest(BaseModel):
     last_valid_step: int | None = None
     error_message: str | None = None
     data_config: DataConfig | ExternalDataConfig
-    dataset: DatasetSummary
+    dataset: DatasetSummary | ExternalDatasetSummary
     training_config: ModelConfig
     code_provenance: CodeProvenance
     observed_sample_ids: list[str]

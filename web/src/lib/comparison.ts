@@ -21,6 +21,8 @@ function hasSameDataIdentity(dataA: DataConfig, dataB: DataConfig): boolean {
       dataA.source === dataB.source &&
       dataA.datasetId === dataB.datasetId &&
       dataA.datasetVersion === dataB.datasetVersion &&
+      dataA.versionManifestSha256 === dataB.versionManifestSha256 &&
+      dataA.processedArtifactSha256 === dataB.processedArtifactSha256 &&
       dataA.sourceFeature === dataB.sourceFeature &&
       dataA.feature === dataB.feature &&
       dataA.target === dataB.target &&

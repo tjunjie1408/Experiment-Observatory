@@ -28,8 +28,10 @@ from observatory.runtime.schema import (
     SCHEMA_VERSION,
     SUPPORTED_SCHEMA_VERSIONS,
     DataConfig,
+    DatasetSummary,
     Event,
     ExternalDataConfig,
+    ExternalDatasetSummary,
     RunManifest,
     Snapshot,
 )
@@ -158,6 +160,14 @@ def validate_run_for_export(run_dir: Path) -> tuple[RunManifest, list[Event], li
         manifest.data_config, ExternalDataConfig
     ):
         raise ExportError("schemaVersion 2 requires external dataConfig")
+    if manifest.schema_version == SCHEMA_VERSION and not isinstance(
+        manifest.dataset, DatasetSummary
+    ):
+        raise ExportError("schemaVersion 1 requires synthetic dataset summary")
+    if manifest.schema_version == EXTERNAL_SCHEMA_VERSION and not isinstance(
+        manifest.dataset, ExternalDatasetSummary
+    ):
+        raise ExportError("schemaVersion 2 requires external dataset summary")
 
     if manifest.status != "completed":
         raise ExportError(

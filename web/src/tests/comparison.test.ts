@@ -28,19 +28,17 @@ describe("getComparisonNotice", () => {
     expect(notice?.message).toContain("not aligned or interpolated");
   });
 
-  it("compares external runs by dataset and modeling identity without synthetic fields", () => {
-    const runA = makeExternalBundle();
-    const runB = makeExternalBundle({
-      versionManifestSha256: "different-version-manifest-hash",
-      processedArtifactSha256: "different-processed-artifact-hash",
-    });
-
-    expect(getComparisonNotice(runA, runB)?.kind).toBe("compatible");
+  it("compares external runs with the same complete dataset identity", () => {
+    expect(
+      getComparisonNotice(makeExternalBundle(), makeExternalBundle())?.kind,
+    ).toBe("compatible");
   });
 
   it.each([
     ["datasetId", "other-dataset"],
     ["datasetVersion", "2.0.0"],
+    ["versionManifestSha256", "c".repeat(64)],
+    ["processedArtifactSha256", "d".repeat(64)],
     ["sourceFeature", "horsepower"],
     ["feature", "horsepower_standardized"],
     ["target", "acceleration"],

@@ -10,18 +10,27 @@ describe("validateBundle schema versions", () => {
   it("accepts a v1 manifest with the synthetic data configuration", () => {
     const bundle = makeBundle();
 
-    expect(validateFixture(bundle).manifest.dataConfig).toEqual(
-      bundle.manifest.dataConfig,
-    );
+    const validated = validateFixture(bundle);
+
+    expect(validated.manifest.dataConfig).toEqual(bundle.manifest.dataConfig);
+    expect(validated.manifest.dataset).toMatchObject({
+      generatorId: "synthetic_linear",
+    });
+    expect(validated.manifest.dataset).not.toHaveProperty("sourceId");
   });
 
   it("accepts a v2 manifest with the fixed external-dataset configuration", () => {
     const bundle = makeExternalBundle();
 
-    expect(
-      validateBundle(bundle.manifest, bundle.events, bundle.snapshots).manifest
-        .dataConfig,
-    ).toEqual(bundle.manifest.dataConfig);
+    const validated = validateBundle(
+      bundle.manifest,
+      bundle.events,
+      bundle.snapshots,
+    );
+
+    expect(validated.manifest.dataConfig).toEqual(bundle.manifest.dataConfig);
+    expect(validated.manifest.dataset).toMatchObject({ sourceId: "auto-mpg" });
+    expect(validated.manifest.dataset).not.toHaveProperty("generatorId");
   });
 
   it("rejects data configuration shapes that do not match the manifest version", () => {
@@ -53,6 +62,43 @@ describe("validateBundle schema versions", () => {
       validateBundle(hybridV2.manifest, hybridV2.events, hybridV2.snapshots),
     ).toThrow(/manifest\.dataConfig/);
   });
+
+  it("rejects dataset summary shapes that do not match the manifest version", () => {
+    const external = makeExternalBundle();
+    Object.assign(external.manifest.dataset, {
+      generatorId: "synthetic_linear",
+    });
+    const synthetic = makeBundle();
+    Object.assign(synthetic.manifest.dataset, { sourceId: "auto-mpg" });
+
+    expect(() =>
+      validateBundle(external.manifest, external.events, external.snapshots),
+    ).toThrow(/manifest\.dataset.*generatorId/);
+    expect(() =>
+      validateBundle(synthetic.manifest, synthetic.events, synthetic.snapshots),
+    ).toThrow(/manifest\.dataset.*sourceId/);
+  });
+
+  it.each([
+    ["versionManifestSha256", "a".repeat(63)],
+    ["versionManifestSha256", "A".repeat(64)],
+    ["versionManifestSha256", `${"a".repeat(63)}g`],
+    ["processedArtifactSha256", "b".repeat(65)],
+    ["processedArtifactSha256", "B".repeat(64)],
+    ["processedArtifactSha256", `${"b".repeat(63)}z`],
+  ])(
+    "rejects a v2 %s that is not lowercase 64-character hex",
+    (field, value) => {
+      const bundle = makeExternalBundle();
+      (bundle.manifest.dataConfig as unknown as Record<string, unknown>)[
+        field
+      ] = value;
+
+      expect(() =>
+        validateBundle(bundle.manifest, bundle.events, bundle.snapshots),
+      ).toThrow(new RegExp(`manifest\\.dataConfig\\.${field}`));
+    },
+  );
 
   it.each([
     ["source", "synthetic"],

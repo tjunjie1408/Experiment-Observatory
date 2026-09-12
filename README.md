@@ -2,7 +2,7 @@
 
 A continuously growing, runnable, inspectable, reproducible machine learning learning archive: each new model ships as a complete experiment unit with a real question, real computation, real validation, and a written explanation, replayed in a web UI that shows how the model fits data, forms predictions, and where it fails.
 
-**Current status:** V0 linear regression training, recording, export, and static replay are implemented. The frontend is migrating to Svelte 5 with declarative SVG charts and accessible component tests. A first D1 dataset slice uses the openly licensed UCI Auto MPG dataset for verified one-feature training; it is not yet exported as a replay bundle. Live browser acceptance of the migrated UI and clean-provenance regeneration of the shipped demo bundles remain pending.
+**Current status:** V0 linear regression training, recording, export, and static replay are implemented. The frontend is migrating to Svelte 5 with declarative SVG charts and accessible component tests. A first D1 dataset slice uses the openly licensed UCI Auto MPG dataset for verified one-feature training and backward-compatible schema-v2 replay export. It is not yet included in the shipped public-run catalog. Live browser acceptance of the migrated UI and clean-provenance regeneration of the shipped demo bundles remain pending.
 
 - [PROJECT_IMPLEMENTATION_PLAN_V0.1.md](docs/PROJECT_IMPLEMENTATION_PLAN_V0.1.md) — initial plan and technology choices
 - [BEHAVIOR_SPECIFICATION_V0.2.md](docs/BEHAVIOR_SPECIFICATION_V0.2.md) — V0 behavior spec and acceptance conditions
@@ -41,6 +41,8 @@ uv sync --locked
 ```bash
 uv run observatory run-all configs/linear/converge.yaml configs/linear/slow.yaml configs/linear/diverge.yaml
 uv run observatory train-dataset configs/linear/auto_mpg_weight.yaml
+uv run observatory run-dataset configs/linear/auto_mpg_weight.yaml --runs-root runs
+uv run observatory export runs/<auto-mpg-run-id> <new-export-directory>
 uv run pytest -q
 uv run ruff check .
 uv run ruff format --check .

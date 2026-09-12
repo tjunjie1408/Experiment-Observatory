@@ -58,12 +58,21 @@ export interface ModelConfig {
   nUpdates: number;
 }
 
-export interface DatasetSummary {
-  generatorId: string;
+interface DatasetSummaryBase {
   sampleIds: string[];
   x: number[];
   y: number[];
 }
+
+export interface SyntheticDatasetSummary extends DatasetSummaryBase {
+  generatorId: string;
+}
+
+export interface ExternalDatasetSummary extends DatasetSummaryBase {
+  sourceId: string;
+}
+
+export type DatasetSummary = SyntheticDatasetSummary | ExternalDatasetSummary;
 
 export interface CodeProvenance {
   gitCommit: string | null;
@@ -79,7 +88,6 @@ interface RunManifestBase {
   stopReason: StopReason | null;
   lastValidStep: number | null;
   errorMessage: string | null;
-  dataset: DatasetSummary;
   trainingConfig: ModelConfig;
   codeProvenance: CodeProvenance;
   observedSampleIds: string[];
@@ -89,11 +97,13 @@ interface RunManifestBase {
 export interface SyntheticRunManifest extends RunManifestBase {
   schemaVersion: 1;
   dataConfig: SyntheticDataConfig;
+  dataset: SyntheticDatasetSummary;
 }
 
 export interface ExternalRunManifest extends RunManifestBase {
   schemaVersion: 2;
   dataConfig: ExternalDataConfig;
+  dataset: ExternalDatasetSummary;
 }
 
 export type RunManifest = SyntheticRunManifest | ExternalRunManifest;
@@ -158,6 +168,18 @@ function assertString(value: unknown, path: string): string {
     );
   }
   return value;
+}
+
+const SHA256_PATTERN = /^[0-9a-f]{64}$/;
+
+function assertSha256(value: unknown, path: string): string {
+  const digest = assertString(value, path);
+  if (!SHA256_PATTERN.test(digest)) {
+    throw new BundleValidationError(
+      `expected a lowercase 64-character SHA-256 hex digest at ${path}, got ${JSON.stringify(value)}`,
+    );
+  }
+  return digest;
 }
 
 function assertLiteral<T extends string>(
@@ -284,11 +306,11 @@ function parseExternalDataConfig(
     source: assertLiteral(obj.source, "external_dataset", `${path}.source`),
     datasetId: assertString(obj.datasetId, `${path}.datasetId`),
     datasetVersion: assertString(obj.datasetVersion, `${path}.datasetVersion`),
-    versionManifestSha256: assertString(
+    versionManifestSha256: assertSha256(
       obj.versionManifestSha256,
       `${path}.versionManifestSha256`,
     ),
-    processedArtifactSha256: assertString(
+    processedArtifactSha256: assertSha256(
       obj.processedArtifactSha256,
       `${path}.processedArtifactSha256`,
     ),
@@ -359,8 +381,10 @@ function parseModelConfig(raw: unknown, path: string): ModelConfig {
   };
 }
 
-function parseDatasetSummary(raw: unknown, path: string): DatasetSummary {
-  const obj = assertObject(raw, path);
+function parseDatasetValues(
+  obj: Record<string, unknown>,
+  path: string,
+): DatasetSummaryBase {
   const sampleIds = assertArray(obj.sampleIds, `${path}.sampleIds`).map(
     (v, i) => assertString(v, `${path}.sampleIds[${i}]`),
   );
@@ -375,11 +399,30 @@ function parseDatasetSummary(raw: unknown, path: string): DatasetSummary {
       `${path}: sampleIds, x, and y must have the same length`,
     );
   }
+  return { sampleIds, x, y };
+}
+
+function parseSyntheticDatasetSummary(
+  raw: unknown,
+  path: string,
+): SyntheticDatasetSummary {
+  const obj = assertObject(raw, path);
+  assertNoKeys(obj, ["sourceId"], path);
   return {
     generatorId: assertString(obj.generatorId, `${path}.generatorId`),
-    sampleIds,
-    x,
-    y,
+    ...parseDatasetValues(obj, path),
+  };
+}
+
+function parseExternalDatasetSummary(
+  raw: unknown,
+  path: string,
+): ExternalDatasetSummary {
+  const obj = assertObject(raw, path);
+  assertNoKeys(obj, ["generatorId"], path);
+  return {
+    sourceId: assertString(obj.sourceId, `${path}.sourceId`),
+    ...parseDatasetValues(obj, path),
   };
 }
 
@@ -452,7 +495,6 @@ function parseManifest(raw: unknown): RunManifest {
       obj.errorMessage ?? null,
       "manifest.errorMessage",
     ),
-    dataset: parseDatasetSummary(obj.dataset, "manifest.dataset"),
     trainingConfig: parseModelConfig(
       obj.trainingConfig,
       "manifest.trainingConfig",
@@ -479,6 +521,7 @@ function parseManifest(raw: unknown): RunManifest {
           obj.dataConfig,
           "manifest.dataConfig",
         ),
+        dataset: parseSyntheticDatasetSummary(obj.dataset, "manifest.dataset"),
       }
     : {
         ...common,
@@ -487,6 +530,7 @@ function parseManifest(raw: unknown): RunManifest {
           obj.dataConfig,
           "manifest.dataConfig",
         ),
+        dataset: parseExternalDatasetSummary(obj.dataset, "manifest.dataset"),
       };
 }
 

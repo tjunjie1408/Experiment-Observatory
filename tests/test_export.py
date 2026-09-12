@@ -138,6 +138,20 @@ def test_export_rejects_schema_version_data_config_mismatch(tmp_path: Path) -> N
         export_run(run_dir, tmp_path / "export" / "bundle")
 
 
+def test_export_rejects_schema_v1_with_external_dataset_summary(tmp_path: Path) -> None:
+    run_dir = make_completed_run(tmp_path)
+    manifest_path = run_dir / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["dataset"] = {
+        "sourceId": manifest["dataset"].pop("generatorId"),
+        **manifest["dataset"],
+    }
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(ExportError, match="schemaVersion 1 requires synthetic dataset summary"):
+        export_run(run_dir, tmp_path / "export" / "bundle")
+
+
 def test_export_rejects_event_version_different_from_manifest(tmp_path: Path) -> None:
     run_dir = make_completed_run(tmp_path)
     events_path = run_dir / "events.jsonl"
