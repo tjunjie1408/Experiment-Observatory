@@ -2,7 +2,7 @@
 
 A continuously growing, runnable, inspectable, reproducible machine learning learning archive: each new model ships as a complete experiment unit with a real question, real computation, real validation, and a written explanation, replayed in a web UI that shows how the model fits data, forms predictions, and where it fails.
 
-**Current status: M0 (environment and tooling setup).** No models or frontend are implemented yet; this repository currently contains only the project docs and the Python tooling skeleton. Full background, scope, and acceptance criteria live in the docs below, not in this README:
+**Current status:** V0 linear regression training, recording, export, and static replay are implemented. The frontend is migrating to Svelte 5 with declarative SVG charts and accessible component tests. A first D1 dataset slice uses the openly licensed UCI Auto MPG dataset for verified one-feature training; it is not yet exported as a replay bundle. Live browser acceptance of the migrated UI and clean-provenance regeneration of the shipped demo bundles remain pending.
 
 - [PROJECT_IMPLEMENTATION_PLAN_V0.1.md](docs/PROJECT_IMPLEMENTATION_PLAN_V0.1.md) — initial plan and technology choices
 - [BEHAVIOR_SPECIFICATION_V0.2.md](docs/BEHAVIOR_SPECIFICATION_V0.2.md) — V0 behavior spec and acceptance conditions
@@ -12,15 +12,17 @@ A continuously growing, runnable, inspectable, reproducible machine learning lea
 ## Layout
 
 ```text
-docs/                 project plans, protocols, model notes
+docs/                 project plans, acceptance evidence, model notes
+datasets/auto-mpg/    immutable source, processed data, and version manifests
 src/observatory/
-  data/               data validation, splitting, preprocessing (not yet implemented)
-  models/             implemented models (not yet implemented)
-  runtime/            config, run lifecycle, recording, export (not yet implemented)
-  api/                V1 local API (not yet implemented)
-  cli.py              CLI entry point (placeholder; subcommands land in M1)
+  data/               synthetic and UCI Auto MPG data preparation
+  models/             NumPy linear regression
+  runtime/            run lifecycle, recording, schema, and static export
+  api/                reserved for the deferred V1 local API
+  cli.py              run, run-all, export, and train-dataset commands
 tests/                numerical, contract, data, and run tests
-configs/linear/       linear regression experiment configs (not yet populated)
+configs/linear/       synthetic replay and external dataset training configs
+web/                   Svelte 5 static replay application and frontend tests
 ```
 
 ## Environment and tooling
@@ -37,11 +39,20 @@ uv sync --locked
 ## Common commands
 
 ```bash
+uv run observatory run-all configs/linear/converge.yaml configs/linear/slow.yaml configs/linear/diverge.yaml
+uv run observatory train-dataset configs/linear/auto_mpg_weight.yaml
+uv run pytest -q
 uv run ruff check .
-uv run ruff format .
+uv run ruff format --check .
 uv run mypy src
-uv run pytest
+
+cd web
+npm test
+npm run typecheck
+npm run build
 ```
+
+`npm test` currently retains three intentional failing provenance checks until the shipped bundles can be regenerated from a clean Git working tree. The other frontend suites pass.
 
 ## Pre-commit checks
 

@@ -54,6 +54,7 @@
     <span class="sr-only">Step scrubber</span>
     <input
       type="range"
+      aria-label="Step scrubber"
       min="0"
       max={lastStep}
       value={state.currentStep}

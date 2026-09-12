@@ -3,6 +3,9 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   plugins: [svelte()],
+  resolve: {
+    conditions: ["browser"],
+  },
   root: "src",
   publicDir: "../public",
   build: {
