@@ -14,8 +14,8 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "outDir": "dist",
-    "rootDir": "src"
+    "rootDir": "src",
   },
-  "include": ["src"],
-  "exclude": ["src/tests"]
+  "include": ["src/**/*.ts", "src/**/*.svelte"],
+  "exclude": ["src/tests"],
 }

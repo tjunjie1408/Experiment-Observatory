@@ -9,7 +9,9 @@ import { computeContourGrid, predict, residuals } from "./math";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
-function svgEl<K extends keyof SVGElementTagNameMap>(tag: K): SVGElementTagNameMap[K] {
+function svgEl<K extends keyof SVGElementTagNameMap>(
+  tag: K,
+): SVGElementTagNameMap[K] {
   return document.createElementNS(SVG_NS, tag);
 }
 
@@ -42,7 +44,13 @@ function baseSvg(): SVGSVGElement {
   return svg;
 }
 
-function addAxisLabel(svg: SVGSVGElement, text: string, x: number, y: number, rotate = false): void {
+function addAxisLabel(
+  svg: SVGSVGElement,
+  text: string,
+  x: number,
+  y: number,
+  rotate = false,
+): void {
   const label = svgEl("text");
   label.setAttribute("x", String(x));
   label.setAttribute("y", String(y));
@@ -141,8 +149,14 @@ export function renderLossCurveView(
 
   const steps = bundle.snapshots.map((s) => s.step);
   const mseValues = bundle.snapshots.map((s) => s.trainMse);
-  const xScale = linearScale(niceDomain(steps, 0.02), [MARGIN.left, WIDTH - MARGIN.right]);
-  const yScale = linearScale(niceDomain(mseValues), [HEIGHT - MARGIN.bottom, MARGIN.top]);
+  const xScale = linearScale(niceDomain(steps, 0.02), [
+    MARGIN.left,
+    WIDTH - MARGIN.right,
+  ]);
+  const yScale = linearScale(niceDomain(mseValues), [
+    HEIGHT - MARGIN.bottom,
+    MARGIN.top,
+  ]);
 
   const points = bundle.snapshots
     .map((s) => `${xScale(s.step)},${yScale(s.trainMse)}`)
@@ -184,7 +198,9 @@ export function renderContourView(
 
   const resolution = 24;
   const contour = computeContourGrid(x, y, bDomain, wDomain, resolution);
-  const maxMse = Math.max(...contour.grid.flat().filter((v) => Number.isFinite(v)));
+  const maxMse = Math.max(
+    ...contour.grid.flat().filter((v) => Number.isFinite(v)),
+  );
 
   const bScale = linearScale(bDomain, [MARGIN.left, WIDTH - MARGIN.right]);
   const wScale = linearScale(wDomain, [HEIGHT - MARGIN.bottom, MARGIN.top]);
@@ -197,12 +213,19 @@ export function renderContourView(
       if (!Number.isFinite(value)) continue;
       const intensity = maxMse > 0 ? Math.min(1, value / maxMse) : 0;
       const rect = svgEl("rect");
-      rect.setAttribute("x", String(bScale(contour.bValues[i] as number) - cellW / 2));
-      rect.setAttribute("y", String(wScale(contour.wValues[j] as number) - cellH / 2));
+      rect.setAttribute(
+        "x",
+        String(bScale(contour.bValues[i] as number) - cellW / 2),
+      );
+      rect.setAttribute(
+        "y",
+        String(wScale(contour.wValues[j] as number) - cellH / 2),
+      );
       rect.setAttribute("width", String(cellW));
       rect.setAttribute("height", String(cellH));
-      const lightness = 92 - intensity * 55;
-      rect.setAttribute("fill", `hsl(220 60% ${lightness}%)`);
+      const lightness = 96 - intensity * 30;
+      const saturation = 12 + intensity * 45;
+      rect.setAttribute("fill", `hsl(35 ${saturation}% ${lightness}%)`);
       rect.setAttribute("stroke", "none");
       svg.appendChild(rect);
     }

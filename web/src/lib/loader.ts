@@ -5,7 +5,11 @@
  * instead of a generic failure.
  */
 
-import { BundleValidationError, type RunBundle, validateBundle } from "./schema";
+import {
+  BundleValidationError,
+  type RunBundle,
+  validateBundle,
+} from "./schema";
 
 export class BundleLoadError extends Error {
   constructor(reason: string) {
@@ -14,15 +18,23 @@ export class BundleLoadError extends Error {
   }
 }
 
-async function fetchText(url: string, label: string): Promise<string> {
+async function fetchText(
+  url: string,
+  label: string,
+  signal?: AbortSignal,
+): Promise<string> {
   let response: Response;
   try {
-    response = await fetch(url);
+    response = await fetch(url, { signal });
   } catch (exc) {
-    throw new BundleLoadError(`could not fetch ${label} (${url}): ${String(exc)}`);
+    throw new BundleLoadError(
+      `could not fetch ${label} (${url}): ${String(exc)}`,
+    );
   }
   if (!response.ok) {
-    throw new BundleLoadError(`${label} not found at ${url} (HTTP ${response.status})`);
+    throw new BundleLoadError(
+      `${label} not found at ${url} (HTTP ${response.status})`,
+    );
   }
   return response.text();
 }
@@ -41,7 +53,9 @@ function parseJsonl(text: string, label: string): unknown[] {
     try {
       return JSON.parse(line);
     } catch (exc) {
-      throw new BundleLoadError(`${label} line ${index + 1} is not valid JSON: ${String(exc)}`);
+      throw new BundleLoadError(
+        `${label} line ${index + 1} is not valid JSON: ${String(exc)}`,
+      );
     }
   });
 }
@@ -53,13 +67,16 @@ function parseJsonl(text: string, label: string): unknown[] {
  * late-arriving response for an old selection must not overwrite a newer
  * selection.
  */
-export async function loadRunBundle(baseUrl: string, signal?: AbortSignal): Promise<RunBundle> {
+export async function loadRunBundle(
+  baseUrl: string,
+  signal?: AbortSignal,
+): Promise<RunBundle> {
   const normalizedBase = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
 
   const [manifestText, eventsText, snapshotsText] = await Promise.all([
-    fetchText(`${normalizedBase}manifest.json`, "manifest.json"),
-    fetchText(`${normalizedBase}events.jsonl`, "events.jsonl"),
-    fetchText(`${normalizedBase}snapshots.json`, "snapshots.json"),
+    fetchText(`${normalizedBase}manifest.json`, "manifest.json", signal),
+    fetchText(`${normalizedBase}events.jsonl`, "events.jsonl", signal),
+    fetchText(`${normalizedBase}snapshots.json`, "snapshots.json", signal),
   ]);
 
   if (signal?.aborted) {

@@ -1,0 +1,27 @@
+:root {
+  color-scheme: light;
+  font-family: Geist, "Segoe UI", system-ui, sans-serif;
+  font-synthesis: none;
+  --font-ui: Geist, "Segoe UI", system-ui, sans-serif;
+  --font-data: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
+  --page: #f6f7f9;
+  --surface: #ffffff;
+  --surface-muted: #eef0f3;
+  --surface-selected: #fbe9e4;
+  --border: #d8dce3;
+  --grid: #e8ecf1;
+  --text: #191b20;
+  --text-muted: #626873;
+  --accent: #d94f32;
+  --accent-hover: #b93e26;
+  --run-a: #4656a6;
+  --run-b: #c65a32;
+  --point: #343840;
+  --success: #287a55;
+  --warning: #a86400;
+  --error: #b42318;
+  --radius: 10px;
+  --radius-control: 8px;
+  --focus: 0 0 0 3px #f6c9bd;
+  --shadow-float: 0 4px 12px rgb(25 27 32 / 8%);
+}
