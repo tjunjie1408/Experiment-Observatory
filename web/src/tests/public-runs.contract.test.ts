@@ -29,6 +29,9 @@ const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 // so a bundle added to the UI without updating this test (or vice versa)
 // is no longer possible.
 const SHIPPED_RUN_IDS = AVAILABLE_RUNS.map((run) => run.id);
+const SYNTHETIC_COMPARISON_RUN_IDS = AVAILABLE_RUNS.filter(
+  (run) => run.comparisonGroup === "synthetic-learning-rate",
+).map((run) => run.id);
 
 /**
  * True if `commit` resolves to an actual object in this repository's git
@@ -62,58 +65,93 @@ function loadBundleFromDisk(runId: string): {
     .split("\n")
     .filter((line: string) => line.trim().length > 0)
     .map((line: string) => JSON.parse(line));
-  const snapshotsRaw = JSON.parse(readFileSync(`${dir}/snapshots.json`, "utf-8"));
+  const snapshotsRaw = JSON.parse(
+    readFileSync(`${dir}/snapshots.json`, "utf-8"),
+  );
   return { manifestRaw, eventsRaw, snapshotsRaw };
 }
 
 describe("shipped demo bundles (public/runs)", () => {
-  it.each(SHIPPED_RUN_IDS)("%s passes the same validation the app performs at load time", (runId) => {
-    const { manifestRaw, eventsRaw, snapshotsRaw } = loadBundleFromDisk(runId);
-    const bundle = validateBundle(manifestRaw, eventsRaw, snapshotsRaw);
+  it.each(SHIPPED_RUN_IDS)(
+    "%s passes the same validation the app performs at load time",
+    (runId) => {
+      const { manifestRaw, eventsRaw, snapshotsRaw } =
+        loadBundleFromDisk(runId);
+      const bundle = validateBundle(manifestRaw, eventsRaw, snapshotsRaw);
 
-    expect(bundle.manifest.status).toBe("completed");
-    expect(bundle.snapshots.length).toBeGreaterThan(0);
-  });
+      expect(bundle.manifest.status).toBe("completed");
+      expect(bundle.snapshots.length).toBeGreaterThan(0);
+    },
+  );
 
-  it.each(SHIPPED_RUN_IDS)("%s has non-dirty, resolvable code provenance", (runId) => {
-    const { manifestRaw } = loadBundleFromDisk(runId);
-    const manifest = manifestRaw as {
-      codeProvenance: { gitCommit: string | null; gitDirty: boolean | null; unavailableReason: string | null };
-    };
+  it.each(SHIPPED_RUN_IDS)(
+    "%s has non-dirty, resolvable code provenance",
+    (runId) => {
+      const { manifestRaw } = loadBundleFromDisk(runId);
+      const manifest = manifestRaw as {
+        codeProvenance: {
+          gitCommit: string | null;
+          gitDirty: boolean | null;
+          unavailableReason: string | null;
+        };
+      };
 
-    // A bundle's provenance must either point at a real, clean, resolvable
-    // commit, or explicitly say why it can't. "Resolvable" is verified
-    // here (not deferred to a separate CI step) via `git cat-file -e`
-    // against this checkout's object database: a dirty-tree export
-    // (gitDirty === true) or a fabricated/dangling commit hash would both
-    // fail this test, which is exactly the defect class this test exists
-    // to prevent from recurring.
-    if (manifest.codeProvenance.unavailableReason === null) {
-      const { gitCommit, gitDirty } = manifest.codeProvenance;
-      expect(gitCommit).not.toBeNull();
-      expect(gitDirty).toBe(false);
-      expect(commitExistsInRepo(gitCommit as string)).toBe(true);
-    }
-  });
+      // A bundle's provenance must either point at a real, clean, resolvable
+      // commit, or explicitly say why it can't. "Resolvable" is verified
+      // here (not deferred to a separate CI step) via `git cat-file -e`
+      // against this checkout's object database: a dirty-tree export
+      // (gitDirty === true) or a fabricated/dangling commit hash would both
+      // fail this test, which is exactly the defect class this test exists
+      // to prevent from recurring.
+      if (manifest.codeProvenance.unavailableReason === null) {
+        const { gitCommit, gitDirty } = manifest.codeProvenance;
+        expect(gitCommit).not.toBeNull();
+        expect(gitDirty).toBe(false);
+        expect(commitExistsInRepo(gitCommit as string)).toBe(true);
+      }
+    },
+  );
 
-  it("all shipped runs share the same data configuration and initialization", () => {
-    const manifests = SHIPPED_RUN_IDS.map((runId) => {
+  it("the synthetic learning-rate cohort shares data, initialization, and budget", () => {
+    const manifests = SYNTHETIC_COMPARISON_RUN_IDS.map((runId) => {
       const { manifestRaw } = loadBundleFromDisk(runId);
       return manifestRaw as {
         dataConfig: Record<string, unknown>;
-        trainingConfig: { initialBias: number; initialWeight: number; nUpdates: number };
+        trainingConfig: {
+          initialBias: number;
+          initialWeight: number;
+          nUpdates: number;
+        };
       };
     });
 
-    const dataConfigsJson = new Set(manifests.map((m) => JSON.stringify(m.dataConfig)));
+    const dataConfigsJson = new Set(
+      manifests.map((m) => JSON.stringify(m.dataConfig)),
+    );
     expect(dataConfigsJson.size).toBe(1);
 
     const initPairs = new Set(
-      manifests.map((m) => `${m.trainingConfig.initialBias},${m.trainingConfig.initialWeight}`),
+      manifests.map(
+        (m) =>
+          `${m.trainingConfig.initialBias},${m.trainingConfig.initialWeight}`,
+      ),
     );
     expect(initPairs.size).toBe(1);
 
     const budgets = new Set(manifests.map((m) => m.trainingConfig.nUpdates));
     expect(budgets.size).toBe(1);
+  });
+
+  it("ships Auto MPG as an external schema-v2 run", () => {
+    const { manifestRaw, eventsRaw, snapshotsRaw } =
+      loadBundleFromDisk("auto-mpg");
+    const bundle = validateBundle(manifestRaw, eventsRaw, snapshotsRaw);
+
+    expect(bundle.manifest.schemaVersion).toBe(2);
+    expect(bundle.manifest.dataConfig).toMatchObject({
+      source: "external_dataset",
+      datasetId: "uci-auto-mpg",
+      datasetVersion: "1.0.0",
+    });
   });
 });

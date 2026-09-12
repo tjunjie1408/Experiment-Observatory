@@ -14,10 +14,32 @@ export interface AvailableRun {
   id: string;
   label: string;
   path: string;
+  comparisonGroup: "synthetic-learning-rate" | "auto-mpg-weight";
 }
 
 export const AVAILABLE_RUNS: AvailableRun[] = [
-  { id: "converge", label: "Converge (lr=0.25)", path: "/runs/converge" },
-  { id: "slow", label: "Slow (lr=0.001)", path: "/runs/slow" },
-  { id: "diverge", label: "Diverge (lr=1.5)", path: "/runs/diverge" },
+  {
+    id: "converge",
+    label: "Converge (lr=0.25)",
+    path: "/runs/converge",
+    comparisonGroup: "synthetic-learning-rate",
+  },
+  {
+    id: "slow",
+    label: "Slow (lr=0.001)",
+    path: "/runs/slow",
+    comparisonGroup: "synthetic-learning-rate",
+  },
+  {
+    id: "diverge",
+    label: "Diverge (lr=1.5)",
+    path: "/runs/diverge",
+    comparisonGroup: "synthetic-learning-rate",
+  },
+  {
+    id: "auto-mpg",
+    label: "Auto MPG: weight to mpg (lr=0.1)",
+    path: "/runs/auto-mpg",
+    comparisonGroup: "auto-mpg-weight",
+  },
 ];
