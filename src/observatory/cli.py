@@ -16,6 +16,8 @@ touch an earlier config's completed run.
 from __future__ import annotations
 
 import argparse
+import hashlib
+import math
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -23,12 +25,17 @@ from typing import Any
 
 import yaml
 
-from observatory.data.auto_mpg import load_auto_mpg, standardize_weight
+from observatory.data.auto_mpg import (
+    AutoMpgDataset,
+    PreparedAutoMpgDataset,
+    load_auto_mpg,
+    standardize_weight,
+)
 from observatory.data.synthetic import SyntheticLinearConfig
 from observatory.models.linear_regression import fit, least_squares_reference, mse
 from observatory.runtime.export import ExportError, export_run
-from observatory.runtime.record import RunIOError, create_run, run_training
-from observatory.runtime.schema import ModelConfig, RunManifest
+from observatory.runtime.record import RunIOError, create_external_run, create_run, run_training
+from observatory.runtime.schema import ExternalDataConfig, ModelConfig, RunManifest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_RUNS_ROOT = REPO_ROOT / "runs"
@@ -98,13 +105,20 @@ def _load_config(config_path: Path) -> tuple[str, SyntheticLinearConfig, ModelCo
     return experiment_id, data_config, model_cfg
 
 
-def train_dataset(config_path: Path) -> DatasetTrainingResult:
-    """Train the supported external dataset config without creating a replay run.
+@dataclass(frozen=True)
+class _DatasetRunInput:
+    experiment_id: str
+    dataset: AutoMpgDataset
+    prepared: PreparedAutoMpgDataset
+    model_config: ModelConfig
 
-    External provenance cannot be represented honestly by the synthetic-only
-    schema-v1 DataConfig, so this command deliberately stops at verified
-    training evidence until a versioned replay schema is designed.
-    """
+
+def _resolve_repo_path(value: str) -> Path:
+    path = Path(value)
+    return path if path.is_absolute() else REPO_ROOT / path
+
+
+def _load_dataset_run_input(config_path: Path) -> _DatasetRunInput:
     if not config_path.is_file():
         raise ConfigError(f"config file not found: {config_path}")
     try:
@@ -115,8 +129,13 @@ def train_dataset(config_path: Path) -> DatasetTrainingResult:
         raise ConfigError(f"{config_path} must contain a YAML mapping at the top level")
 
     try:
-        data_raw: dict[str, Any] = raw["data"]
-        model_raw: dict[str, Any] = raw["model"]
+        experiment_id = raw["experiment_id"]
+        data_raw = raw["data"]
+        model_raw = raw["model"]
+        if not isinstance(experiment_id, str) or not experiment_id:
+            raise ConfigError(f"{config_path}: experiment_id must be a non-empty string")
+        if not isinstance(data_raw, dict) or not isinstance(model_raw, dict):
+            raise ConfigError(f"{config_path}: data and model must be mappings")
         expected_data = {
             "dataset": "uci-auto-mpg",
             "feature": "weight",
@@ -130,8 +149,11 @@ def train_dataset(config_path: Path) -> DatasetTrainingResult:
                     f"{config_path}: data.{field} must be {expected!r} for this command"
                 )
         version_manifest_value = data_raw["version_manifest"]
+        processed_artifact_value = data_raw["processed_artifact"]
         if not isinstance(version_manifest_value, str) or not version_manifest_value:
             raise ConfigError(f"{config_path}: data.version_manifest must be a path string")
+        if not isinstance(processed_artifact_value, str) or not processed_artifact_value:
+            raise ConfigError(f"{config_path}: data.processed_artifact must be a path string")
         model_cfg = ModelConfig(
             algorithm=model_raw["algorithm"],
             initial_bias=model_raw["initial_bias"],
@@ -139,6 +161,24 @@ def train_dataset(config_path: Path) -> DatasetTrainingResult:
             learning_rate=model_raw["learning_rate"],
             n_updates=model_raw["n_updates"],
         )
+        if any(
+            isinstance(model_raw[field], bool)
+            for field in ("initial_bias", "initial_weight", "learning_rate", "n_updates")
+        ):
+            raise ValueError("model numeric fields must not be booleans")
+        if not all(
+            math.isfinite(value)
+            for value in (
+                model_cfg.initial_bias,
+                model_cfg.initial_weight,
+                model_cfg.learning_rate,
+            )
+        ):
+            raise ValueError("model parameters must be finite")
+        if model_cfg.learning_rate <= 0:
+            raise ValueError("model.learning_rate must be positive")
+        if model_cfg.n_updates < 0:
+            raise ValueError("model.n_updates must be non-negative")
     except KeyError as exc:
         raise ConfigError(f"{config_path} is missing required key: {exc}") from exc
     except (TypeError, ValueError) as exc:
@@ -146,12 +186,36 @@ def train_dataset(config_path: Path) -> DatasetTrainingResult:
             raise
         raise ConfigError(f"{config_path}: {exc}") from exc
 
-    version_manifest = Path(version_manifest_value)
-    if not version_manifest.is_absolute():
-        version_manifest = REPO_ROOT / version_manifest
     try:
-        dataset = load_auto_mpg(version_manifest)
+        dataset = load_auto_mpg(_resolve_repo_path(version_manifest_value))
+        configured_version = data_raw.get("version")
+        if configured_version != dataset.version:
+            raise ValueError(
+                f"data.version {configured_version!r} does not match verified version {dataset.version!r}"
+            )
+        processed_path = _resolve_repo_path(processed_artifact_value)
+        processed_hash = hashlib.sha256(processed_path.read_bytes()).hexdigest()
+        if processed_hash != dataset.processed_artifact_sha256:
+            raise ValueError("configured processed artifact does not match the verified artifact")
         prepared = standardize_weight(dataset)
+    except (OSError, ValueError) as exc:
+        raise ConfigError(f"{config_path}: {exc}") from exc
+
+    return _DatasetRunInput(
+        experiment_id=experiment_id,
+        dataset=dataset,
+        prepared=prepared,
+        model_config=model_cfg,
+    )
+
+
+def train_dataset(config_path: Path) -> DatasetTrainingResult:
+    """Train the supported external dataset without creating replay artifacts."""
+    run_input = _load_dataset_run_input(config_path)
+    dataset = run_input.dataset
+    prepared = run_input.prepared
+    model_cfg = run_input.model_config
+    try:
         states = fit(
             prepared.x,
             prepared.y,
@@ -160,7 +224,7 @@ def train_dataset(config_path: Path) -> DatasetTrainingResult:
             b0=model_cfg.initial_bias,
             w0=model_cfg.initial_weight,
         )
-    except (OSError, ValueError, FloatingPointError) as exc:
+    except (ValueError, FloatingPointError) as exc:
         raise ConfigError(f"{config_path}: {exc}") from exc
 
     final = states[-1]
@@ -177,6 +241,40 @@ def train_dataset(config_path: Path) -> DatasetTrainingResult:
         reference_w=reference_w,
         reference_mse=reference_mse,
     )
+
+
+def run_dataset(config_path: Path, runs_root: Path) -> RunManifest:
+    """Create and execute a schema-v2 replay run for the verified Auto MPG dataset."""
+    run_input = _load_dataset_run_input(config_path)
+    dataset = run_input.dataset
+    prepared = run_input.prepared
+    try:
+        runs_root.mkdir(parents=True, exist_ok=True)
+        recorder = create_external_run(
+            experiment_id=run_input.experiment_id,
+            data_config=ExternalDataConfig(
+                source="external_dataset",
+                dataset_id=dataset.dataset_id,
+                dataset_version=dataset.version,
+                version_manifest_sha256=dataset.version_manifest_sha256,
+                processed_artifact_sha256=dataset.processed_artifact_sha256,
+                source_feature="weight",
+                feature="weight_standardized",
+                feature_unit="population standard deviations",
+                target="mpg",
+                target_unit="miles per gallon",
+                preprocessing="population_standardization",
+                split="all-398-rows",
+            ),
+            dataset=prepared,
+            dataset_identity=f"{dataset.dataset_id}@{dataset.version}:weight_standardized",
+            model_cfg=run_input.model_config,
+            runs_root=runs_root,
+            repo_root=REPO_ROOT,
+        )
+    except (OSError, ValueError, RunIOError) as exc:
+        raise ConfigError(f"{config_path}: could not create dataset run: {exc}") from exc
+    return run_training(recorder)
 
 
 def run_one(config_path: Path, runs_root: Path) -> RunManifest:
@@ -219,6 +317,17 @@ def _cmd_train_dataset(args: argparse.Namespace) -> int:
         f"train_mse={result.train_mse:.12g} reference_mse={result.reference_mse:.12g}"
     )
     return 0
+
+
+def _cmd_run_dataset(args: argparse.Namespace) -> int:
+    try:
+        manifest = run_dataset(Path(args.config), Path(args.runs_root))
+    except ConfigError as exc:
+        print(f"rejected: {exc}", file=sys.stderr)
+        return 2
+
+    print(f"run {manifest.run_id}: status={manifest.status} stop_reason={manifest.stop_reason}")
+    return 0 if manifest.status == "completed" else 1
 
 
 def _cmd_run(args: argparse.Namespace) -> int:
@@ -279,6 +388,17 @@ def build_parser() -> argparse.ArgumentParser:
         "config", help="Path to an external dataset config YAML file."
     )
     train_dataset_parser.set_defaults(func=_cmd_train_dataset)
+
+    run_dataset_parser = subparsers.add_parser(
+        "run-dataset", help="Run an external dataset config and record a schema-v2 replay bundle."
+    )
+    run_dataset_parser.add_argument("config", help="Path to an external dataset config YAML file.")
+    run_dataset_parser.add_argument(
+        "--runs-root",
+        default=str(DEFAULT_RUNS_ROOT),
+        help="Directory under which run directories are created (default: ./runs).",
+    )
+    run_dataset_parser.set_defaults(func=_cmd_run_dataset)
 
     run_parser = subparsers.add_parser("run", help="Run a single synthetic experiment config.")
     run_parser.add_argument("config", help="Path to a linear regression config YAML file.")

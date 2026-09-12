@@ -1,10 +1,45 @@
-import type { RunBundle } from "./schema";
+import {
+  isExternalDataConfig,
+  type DataConfig,
+  type RunBundle,
+} from "./schema";
 
 export type ComparisonNoticeKind = "waiting" | "incompatible" | "compatible";
 
 export interface ComparisonNotice {
   kind: ComparisonNoticeKind;
   message: string;
+}
+
+function hasSameDataIdentity(dataA: DataConfig, dataB: DataConfig): boolean {
+  const externalA = isExternalDataConfig(dataA);
+  const externalB = isExternalDataConfig(dataB);
+  if (externalA !== externalB) return false;
+
+  if (externalA && externalB) {
+    return (
+      dataA.source === dataB.source &&
+      dataA.datasetId === dataB.datasetId &&
+      dataA.datasetVersion === dataB.datasetVersion &&
+      dataA.sourceFeature === dataB.sourceFeature &&
+      dataA.feature === dataB.feature &&
+      dataA.target === dataB.target &&
+      dataA.preprocessing === dataB.preprocessing &&
+      dataA.split === dataB.split
+    );
+  }
+
+  if (!externalA && !externalB) {
+    return (
+      dataA.seed === dataB.seed &&
+      dataA.nSamples === dataB.nSamples &&
+      dataA.trueBias === dataB.trueBias &&
+      dataA.trueWeight === dataB.trueWeight &&
+      dataA.noiseStd === dataB.noiseStd
+    );
+  }
+
+  return false;
 }
 
 export function getComparisonNotice(
@@ -21,15 +56,12 @@ export function getComparisonNotice(
 
   const dataA = bundleA.manifest.dataConfig;
   const dataB = bundleB.manifest.dataConfig;
-  const sameData =
-    dataA.seed === dataB.seed &&
-    dataA.nSamples === dataB.nSamples &&
-    dataA.trueBias === dataB.trueBias &&
-    dataA.trueWeight === dataB.trueWeight &&
-    dataA.noiseStd === dataB.noiseStd;
+  const sameData = hasSameDataIdentity(dataA, dataB);
   const sameInitialization =
-    bundleA.manifest.trainingConfig.initialBias === bundleB.manifest.trainingConfig.initialBias &&
-    bundleA.manifest.trainingConfig.initialWeight === bundleB.manifest.trainingConfig.initialWeight;
+    bundleA.manifest.trainingConfig.initialBias ===
+      bundleB.manifest.trainingConfig.initialBias &&
+    bundleA.manifest.trainingConfig.initialWeight ===
+      bundleB.manifest.trainingConfig.initialWeight;
 
   if (!sameData || !sameInitialization) {
     return {

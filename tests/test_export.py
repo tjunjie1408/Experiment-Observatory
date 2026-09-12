@@ -127,6 +127,30 @@ def test_export_rejects_unsupported_schema_version(tmp_path: Path) -> None:
     assert not (tmp_path / "export" / "bundle").exists()
 
 
+def test_export_rejects_schema_version_data_config_mismatch(tmp_path: Path) -> None:
+    run_dir = make_completed_run(tmp_path)
+    manifest_path = run_dir / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["schemaVersion"] = 2
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(ExportError, match="schemaVersion 2 requires external"):
+        export_run(run_dir, tmp_path / "export" / "bundle")
+
+
+def test_export_rejects_event_version_different_from_manifest(tmp_path: Path) -> None:
+    run_dir = make_completed_run(tmp_path)
+    events_path = run_dir / "events.jsonl"
+    lines = events_path.read_text(encoding="utf-8").splitlines()
+    event = json.loads(lines[0])
+    event["schemaVersion"] = 2
+    lines[0] = json.dumps(event)
+    events_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    with pytest.raises(ExportError, match="does not match manifest schemaVersion"):
+        export_run(run_dir, tmp_path / "export" / "bundle")
+
+
 def test_export_rejects_non_finite_value_in_snapshot(tmp_path: Path) -> None:
     run_dir = make_completed_run(tmp_path)
     snapshots_path = run_dir / "snapshots.json"

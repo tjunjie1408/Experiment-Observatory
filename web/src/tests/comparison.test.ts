@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getComparisonNotice } from "../lib/comparison";
-import { makeBundle } from "./helpers/bundle";
+import { makeBundle, makeExternalBundle } from "./helpers/bundle";
 
 describe("getComparisonNotice", () => {
   it("returns no notice when comparison is disabled", () => {
@@ -26,6 +26,39 @@ describe("getComparisonNotice", () => {
 
     expect(notice?.kind).toBe("incompatible");
     expect(notice?.message).toContain("not aligned or interpolated");
+  });
+
+  it("compares external runs by dataset and modeling identity without synthetic fields", () => {
+    const runA = makeExternalBundle();
+    const runB = makeExternalBundle({
+      versionManifestSha256: "different-version-manifest-hash",
+      processedArtifactSha256: "different-processed-artifact-hash",
+    });
+
+    expect(getComparisonNotice(runA, runB)?.kind).toBe("compatible");
+  });
+
+  it.each([
+    ["datasetId", "other-dataset"],
+    ["datasetVersion", "2.0.0"],
+    ["sourceFeature", "horsepower"],
+    ["feature", "horsepower_standardized"],
+    ["target", "acceleration"],
+    ["preprocessing", "none"],
+    ["split", "train"],
+  ])("rejects external runs with different %s", (field, value) => {
+    const runA = makeExternalBundle();
+    const runB = makeExternalBundle();
+    (runB.manifest.dataConfig as unknown as Record<string, unknown>)[field] =
+      value;
+
+    expect(getComparisonNotice(runA, runB)?.kind).toBe("incompatible");
+  });
+
+  it("rejects comparison across synthetic and external data sources", () => {
+    expect(getComparisonNotice(makeBundle(), makeExternalBundle())?.kind).toBe(
+      "incompatible",
+    );
   });
 
   it("describes unequal step budgets without interpolation or extrapolation", () => {

@@ -13,6 +13,8 @@
  */
 
 export const SCHEMA_VERSION = 1;
+export const SUPPORTED_SCHEMA_VERSIONS = [1, 2] as const;
+export type SchemaVersion = (typeof SUPPORTED_SCHEMA_VERSIONS)[number];
 
 export type RunStatus = "created" | "running" | "completed" | "failed";
 export type StopReason =
@@ -22,7 +24,7 @@ export type StopReason =
   | "user_cancelled"
   | "runtime_error";
 
-export interface DataConfig {
+export interface SyntheticDataConfig {
   generator: string;
   nSamples: number;
   trueBias: number;
@@ -30,6 +32,23 @@ export interface DataConfig {
   noiseStd: number;
   seed: number;
 }
+
+export interface ExternalDataConfig {
+  source: "external_dataset";
+  datasetId: string;
+  datasetVersion: string;
+  versionManifestSha256: string;
+  processedArtifactSha256: string;
+  sourceFeature: "weight";
+  feature: "weight_standardized";
+  featureUnit: "population standard deviations";
+  target: "mpg";
+  targetUnit: "miles per gallon";
+  preprocessing: "population_standardization";
+  split: "all-398-rows";
+}
+
+export type DataConfig = SyntheticDataConfig | ExternalDataConfig;
 
 export interface ModelConfig {
   algorithm: "linear_regression_gradient_descent";
@@ -52,8 +71,7 @@ export interface CodeProvenance {
   unavailableReason: string | null;
 }
 
-export interface RunManifest {
-  schemaVersion: number;
+interface RunManifestBase {
   runId: string;
   experimentId: string;
   createdAt: string;
@@ -61,13 +79,24 @@ export interface RunManifest {
   stopReason: StopReason | null;
   lastValidStep: number | null;
   errorMessage: string | null;
-  dataConfig: DataConfig;
   dataset: DatasetSummary;
   trainingConfig: ModelConfig;
   codeProvenance: CodeProvenance;
   observedSampleIds: string[];
   nSnapshotsWritten: number;
 }
+
+export interface SyntheticRunManifest extends RunManifestBase {
+  schemaVersion: 1;
+  dataConfig: SyntheticDataConfig;
+}
+
+export interface ExternalRunManifest extends RunManifestBase {
+  schemaVersion: 2;
+  dataConfig: ExternalDataConfig;
+}
+
+export type RunManifest = SyntheticRunManifest | ExternalRunManifest;
 
 export interface Snapshot {
   step: number;
@@ -87,7 +116,7 @@ export type EventKind =
   | "run.failed";
 
 export interface RunEvent {
-  schemaVersion: number;
+  schemaVersion: SchemaVersion;
   runId: string;
   seq: number;
   kind: EventKind;
@@ -115,16 +144,56 @@ function isFiniteNumber(value: unknown): value is number {
 
 function assertFiniteNumber(value: unknown, path: string): number {
   if (!isFiniteNumber(value)) {
-    throw new BundleValidationError(`non-finite or non-numeric value at ${path}: ${JSON.stringify(value)}`);
+    throw new BundleValidationError(
+      `non-finite or non-numeric value at ${path}: ${JSON.stringify(value)}`,
+    );
   }
   return value;
 }
 
 function assertString(value: unknown, path: string): string {
   if (typeof value !== "string") {
-    throw new BundleValidationError(`expected string at ${path}, got ${JSON.stringify(value)}`);
+    throw new BundleValidationError(
+      `expected string at ${path}, got ${JSON.stringify(value)}`,
+    );
   }
   return value;
+}
+
+function assertLiteral<T extends string>(
+  value: unknown,
+  expected: T,
+  path: string,
+): T {
+  if (value !== expected) {
+    throw new BundleValidationError(
+      `expected ${JSON.stringify(expected)} at ${path}, got ${JSON.stringify(value)}`,
+    );
+  }
+  return expected;
+}
+
+function assertSchemaVersion(value: unknown, path: string): SchemaVersion {
+  const version = assertFiniteNumber(value, path);
+  if (!SUPPORTED_SCHEMA_VERSIONS.includes(version as SchemaVersion)) {
+    throw new BundleValidationError(
+      `unsupported schemaVersion ${version}; this viewer supports schema versions 1 and 2`,
+    );
+  }
+  return version as SchemaVersion;
+}
+
+function assertNoKeys(
+  obj: Record<string, unknown>,
+  forbiddenKeys: readonly string[],
+  path: string,
+): void {
+  const presentKey = forbiddenKeys.find((key) => key in obj);
+  if (presentKey !== undefined) {
+    throw new BundleValidationError(
+      `${path} contains ${presentKey}, which does not match its schema version`,
+    );
+  }
 }
 
 function assertNullableString(value: unknown, path: string): string | null {
@@ -134,14 +203,18 @@ function assertNullableString(value: unknown, path: string): string | null {
 
 function assertArray(value: unknown, path: string): unknown[] {
   if (!Array.isArray(value)) {
-    throw new BundleValidationError(`expected array at ${path}, got ${JSON.stringify(value)}`);
+    throw new BundleValidationError(
+      `expected array at ${path}, got ${JSON.stringify(value)}`,
+    );
   }
   return value;
 }
 
 function assertObject(value: unknown, path: string): Record<string, unknown> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    throw new BundleValidationError(`expected object at ${path}, got ${JSON.stringify(value)}`);
+    throw new BundleValidationError(
+      `expected object at ${path}, got ${JSON.stringify(value)}`,
+    );
   }
   return value as Record<string, unknown>;
 }
@@ -162,8 +235,35 @@ const EVENT_KINDS: EventKind[] = [
   "run.failed",
 ];
 
-function parseDataConfig(raw: unknown, path: string): DataConfig {
+const SYNTHETIC_DATA_KEYS = [
+  "generator",
+  "nSamples",
+  "trueBias",
+  "trueWeight",
+  "noiseStd",
+  "seed",
+] as const;
+const EXTERNAL_DATA_KEYS = [
+  "source",
+  "datasetId",
+  "datasetVersion",
+  "versionManifestSha256",
+  "processedArtifactSha256",
+  "sourceFeature",
+  "feature",
+  "featureUnit",
+  "target",
+  "targetUnit",
+  "preprocessing",
+  "split",
+] as const;
+
+function parseSyntheticDataConfig(
+  raw: unknown,
+  path: string,
+): SyntheticDataConfig {
   const obj = assertObject(raw, path);
+  assertNoKeys(obj, EXTERNAL_DATA_KEYS, path);
   return {
     generator: assertString(obj.generator, `${path}.generator`),
     nSamples: assertFiniteNumber(obj.nSamples, `${path}.nSamples`),
@@ -174,15 +274,86 @@ function parseDataConfig(raw: unknown, path: string): DataConfig {
   };
 }
 
+function parseExternalDataConfig(
+  raw: unknown,
+  path: string,
+): ExternalDataConfig {
+  const obj = assertObject(raw, path);
+  assertNoKeys(obj, SYNTHETIC_DATA_KEYS, path);
+  return {
+    source: assertLiteral(obj.source, "external_dataset", `${path}.source`),
+    datasetId: assertString(obj.datasetId, `${path}.datasetId`),
+    datasetVersion: assertString(obj.datasetVersion, `${path}.datasetVersion`),
+    versionManifestSha256: assertString(
+      obj.versionManifestSha256,
+      `${path}.versionManifestSha256`,
+    ),
+    processedArtifactSha256: assertString(
+      obj.processedArtifactSha256,
+      `${path}.processedArtifactSha256`,
+    ),
+    sourceFeature: assertLiteral(
+      obj.sourceFeature,
+      "weight",
+      `${path}.sourceFeature`,
+    ),
+    feature: assertLiteral(
+      obj.feature,
+      "weight_standardized",
+      `${path}.feature`,
+    ),
+    featureUnit: assertLiteral(
+      obj.featureUnit,
+      "population standard deviations",
+      `${path}.featureUnit`,
+    ),
+    target: assertLiteral(obj.target, "mpg", `${path}.target`),
+    targetUnit: assertLiteral(
+      obj.targetUnit,
+      "miles per gallon",
+      `${path}.targetUnit`,
+    ),
+    preprocessing: assertLiteral(
+      obj.preprocessing,
+      "population_standardization",
+      `${path}.preprocessing`,
+    ),
+    split: assertLiteral(obj.split, "all-398-rows", `${path}.split`),
+  };
+}
+
+export function isExternalDataConfig(
+  dataConfig: DataConfig,
+): dataConfig is ExternalDataConfig {
+  return "source" in dataConfig && dataConfig.source === "external_dataset";
+}
+
+export function featureLabel(dataConfig: DataConfig): string {
+  return isExternalDataConfig(dataConfig)
+    ? `${dataConfig.feature} (${dataConfig.featureUnit})`
+    : "x";
+}
+
+export function targetLabel(dataConfig: DataConfig): string {
+  return isExternalDataConfig(dataConfig)
+    ? `${dataConfig.target} (${dataConfig.targetUnit})`
+    : "y";
+}
+
 function parseModelConfig(raw: unknown, path: string): ModelConfig {
   const obj = assertObject(raw, path);
   if (obj.algorithm !== "linear_regression_gradient_descent") {
-    throw new BundleValidationError(`unsupported algorithm at ${path}.algorithm: ${JSON.stringify(obj.algorithm)}`);
+    throw new BundleValidationError(
+      `unsupported algorithm at ${path}.algorithm: ${JSON.stringify(obj.algorithm)}`,
+    );
   }
   return {
     algorithm: "linear_regression_gradient_descent",
     initialBias: assertFiniteNumber(obj.initialBias, `${path}.initialBias`),
-    initialWeight: assertFiniteNumber(obj.initialWeight, `${path}.initialWeight`),
+    initialWeight: assertFiniteNumber(
+      obj.initialWeight,
+      `${path}.initialWeight`,
+    ),
     learningRate: assertFiniteNumber(obj.learningRate, `${path}.learningRate`),
     nUpdates: assertFiniteNumber(obj.nUpdates, `${path}.nUpdates`),
   };
@@ -190,13 +361,19 @@ function parseModelConfig(raw: unknown, path: string): ModelConfig {
 
 function parseDatasetSummary(raw: unknown, path: string): DatasetSummary {
   const obj = assertObject(raw, path);
-  const sampleIds = assertArray(obj.sampleIds, `${path}.sampleIds`).map((v, i) =>
-    assertString(v, `${path}.sampleIds[${i}]`),
+  const sampleIds = assertArray(obj.sampleIds, `${path}.sampleIds`).map(
+    (v, i) => assertString(v, `${path}.sampleIds[${i}]`),
   );
-  const x = assertArray(obj.x, `${path}.x`).map((v, i) => assertFiniteNumber(v, `${path}.x[${i}]`));
-  const y = assertArray(obj.y, `${path}.y`).map((v, i) => assertFiniteNumber(v, `${path}.y[${i}]`));
+  const x = assertArray(obj.x, `${path}.x`).map((v, i) =>
+    assertFiniteNumber(v, `${path}.x[${i}]`),
+  );
+  const y = assertArray(obj.y, `${path}.y`).map((v, i) =>
+    assertFiniteNumber(v, `${path}.y[${i}]`),
+  );
   if (x.length !== sampleIds.length || y.length !== sampleIds.length) {
-    throw new BundleValidationError(`${path}: sampleIds, x, and y must have the same length`);
+    throw new BundleValidationError(
+      `${path}: sampleIds, x, and y must have the same length`,
+    );
   }
   return {
     generatorId: assertString(obj.generatorId, `${path}.generatorId`),
@@ -209,7 +386,9 @@ function parseDatasetSummary(raw: unknown, path: string): DatasetSummary {
 function assertNullableBoolean(value: unknown, path: string): boolean | null {
   if (value === null || value === undefined) return null;
   if (typeof value !== "boolean") {
-    throw new BundleValidationError(`expected boolean or null at ${path}, got ${JSON.stringify(value)}`);
+    throw new BundleValidationError(
+      `expected boolean or null at ${path}, got ${JSON.stringify(value)}`,
+    );
   }
   return value;
 }
@@ -219,23 +398,26 @@ function parseCodeProvenance(raw: unknown, path: string): CodeProvenance {
   return {
     gitCommit: assertNullableString(obj.gitCommit ?? null, `${path}.gitCommit`),
     gitDirty: assertNullableBoolean(obj.gitDirty, `${path}.gitDirty`),
-    unavailableReason: assertNullableString(obj.unavailableReason ?? null, `${path}.unavailableReason`),
+    unavailableReason: assertNullableString(
+      obj.unavailableReason ?? null,
+      `${path}.unavailableReason`,
+    ),
   };
 }
 
 function parseManifest(raw: unknown): RunManifest {
   const obj = assertObject(raw, "manifest");
 
-  const schemaVersion = assertFiniteNumber(obj.schemaVersion, "manifest.schemaVersion");
-  if (schemaVersion !== SCHEMA_VERSION) {
-    throw new BundleValidationError(
-      `unsupported schemaVersion ${schemaVersion}; this viewer supports ${SCHEMA_VERSION}`,
-    );
-  }
+  const schemaVersion = assertSchemaVersion(
+    obj.schemaVersion,
+    "manifest.schemaVersion",
+  );
 
   const status = assertString(obj.status, "manifest.status");
   if (!RUN_STATUSES.includes(status as RunStatus)) {
-    throw new BundleValidationError(`manifest.status has an unknown value: ${status}`);
+    throw new BundleValidationError(
+      `manifest.status has an unknown value: ${status}`,
+    );
   }
 
   const stopReasonRaw = obj.stopReason;
@@ -243,7 +425,9 @@ function parseManifest(raw: unknown): RunManifest {
   if (stopReasonRaw !== null && stopReasonRaw !== undefined) {
     const s = assertString(stopReasonRaw, "manifest.stopReason");
     if (!STOP_REASONS.includes(s as StopReason)) {
-      throw new BundleValidationError(`manifest.stopReason has an unknown value: ${s}`);
+      throw new BundleValidationError(
+        `manifest.stopReason has an unknown value: ${s}`,
+      );
     }
     stopReason = s as StopReason;
   }
@@ -254,8 +438,7 @@ function parseManifest(raw: unknown): RunManifest {
     );
   }
 
-  return {
-    schemaVersion,
+  const common: RunManifestBase = {
     runId: assertString(obj.runId, "manifest.runId"),
     experimentId: assertString(obj.experimentId, "manifest.experimentId"),
     createdAt: assertString(obj.createdAt, "manifest.createdAt"),
@@ -265,22 +448,55 @@ function parseManifest(raw: unknown): RunManifest {
       obj.lastValidStep === null || obj.lastValidStep === undefined
         ? null
         : assertFiniteNumber(obj.lastValidStep, "manifest.lastValidStep"),
-    errorMessage: assertNullableString(obj.errorMessage ?? null, "manifest.errorMessage"),
-    dataConfig: parseDataConfig(obj.dataConfig, "manifest.dataConfig"),
-    dataset: parseDatasetSummary(obj.dataset, "manifest.dataset"),
-    trainingConfig: parseModelConfig(obj.trainingConfig, "manifest.trainingConfig"),
-    codeProvenance: parseCodeProvenance(obj.codeProvenance, "manifest.codeProvenance"),
-    observedSampleIds: assertArray(obj.observedSampleIds, "manifest.observedSampleIds").map((v, i) =>
-      assertString(v, `manifest.observedSampleIds[${i}]`),
+    errorMessage: assertNullableString(
+      obj.errorMessage ?? null,
+      "manifest.errorMessage",
     ),
-    nSnapshotsWritten: assertFiniteNumber(obj.nSnapshotsWritten, "manifest.nSnapshotsWritten"),
+    dataset: parseDatasetSummary(obj.dataset, "manifest.dataset"),
+    trainingConfig: parseModelConfig(
+      obj.trainingConfig,
+      "manifest.trainingConfig",
+    ),
+    codeProvenance: parseCodeProvenance(
+      obj.codeProvenance,
+      "manifest.codeProvenance",
+    ),
+    observedSampleIds: assertArray(
+      obj.observedSampleIds,
+      "manifest.observedSampleIds",
+    ).map((v, i) => assertString(v, `manifest.observedSampleIds[${i}]`)),
+    nSnapshotsWritten: assertFiniteNumber(
+      obj.nSnapshotsWritten,
+      "manifest.nSnapshotsWritten",
+    ),
   };
+
+  return schemaVersion === 1
+    ? {
+        ...common,
+        schemaVersion,
+        dataConfig: parseSyntheticDataConfig(
+          obj.dataConfig,
+          "manifest.dataConfig",
+        ),
+      }
+    : {
+        ...common,
+        schemaVersion,
+        dataConfig: parseExternalDataConfig(
+          obj.dataConfig,
+          "manifest.dataConfig",
+        ),
+      };
 }
 
 function parseSnapshot(raw: unknown, index: number): Snapshot {
   const path = `snapshots[${index}]`;
   const obj = assertObject(raw, path);
-  const predictionsObj = assertObject(obj.observedPredictions, `${path}.observedPredictions`);
+  const predictionsObj = assertObject(
+    obj.observedPredictions,
+    `${path}.observedPredictions`,
+  );
   const observedPredictions: Record<string, number> = {};
   for (const [sampleId, value] of Object.entries(predictionsObj)) {
     observedPredictions[sampleId] = assertFiniteNumber(
@@ -304,14 +520,22 @@ function parseEvent(raw: unknown, index: number): RunEvent {
   const obj = assertObject(raw, path);
   const kind = assertString(obj.kind, `${path}.kind`);
   if (!EVENT_KINDS.includes(kind as EventKind)) {
-    throw new BundleValidationError(`${path}.kind has an unknown value: ${kind}`);
+    throw new BundleValidationError(
+      `${path}.kind has an unknown value: ${kind}`,
+    );
   }
   return {
-    schemaVersion: assertFiniteNumber(obj.schemaVersion, `${path}.schemaVersion`),
+    schemaVersion: assertSchemaVersion(
+      obj.schemaVersion,
+      `${path}.schemaVersion`,
+    ),
     runId: assertString(obj.runId, `${path}.runId`),
     seq: assertFiniteNumber(obj.seq, `${path}.seq`),
     kind: kind as EventKind,
-    step: obj.step === null || obj.step === undefined ? null : assertFiniteNumber(obj.step, `${path}.step`),
+    step:
+      obj.step === null || obj.step === undefined
+        ? null
+        : assertFiniteNumber(obj.step, `${path}.step`),
     message: assertNullableString(obj.message ?? null, `${path}.message`),
   };
 }
@@ -335,8 +559,13 @@ export function validateBundle(
   const steps = snapshots.map((s) => s.step);
   const sortedSteps = [...steps].sort((a, b) => a - b);
   const uniqueStepCount = new Set(steps).size;
-  if (steps.some((s, i) => s !== sortedSteps[i]) || uniqueStepCount !== steps.length) {
-    throw new BundleValidationError("snapshots steps are not strictly increasing and unique");
+  if (
+    steps.some((s, i) => s !== sortedSteps[i]) ||
+    uniqueStepCount !== steps.length
+  ) {
+    throw new BundleValidationError(
+      "snapshots steps are not strictly increasing and unique",
+    );
   }
 
   if (manifest.nSnapshotsWritten !== snapshots.length) {
@@ -351,20 +580,29 @@ export function validateBundle(
         `events contain an event for a different run (${event.runId} != ${manifest.runId})`,
       );
     }
-    if (event.schemaVersion !== SCHEMA_VERSION) {
-      throw new BundleValidationError(`event has unsupported schemaVersion ${event.schemaVersion}`);
+    if (event.schemaVersion !== manifest.schemaVersion) {
+      throw new BundleValidationError(
+        `event schemaVersion ${event.schemaVersion} does not match manifest schemaVersion ${manifest.schemaVersion}`,
+      );
     }
   }
   const seqs = events.map((e) => e.seq);
   const sortedSeqs = [...seqs].sort((a, b) => a - b);
-  if (seqs.some((s, i) => s !== sortedSeqs[i]) || new Set(seqs).size !== seqs.length) {
-    throw new BundleValidationError("event seq values are not strictly increasing and unique");
+  if (
+    seqs.some((s, i) => s !== sortedSeqs[i]) ||
+    new Set(seqs).size !== seqs.length
+  ) {
+    throw new BundleValidationError(
+      "event seq values are not strictly increasing and unique",
+    );
   }
 
   const knownSampleIds = new Set(manifest.dataset.sampleIds);
   for (const sampleId of manifest.observedSampleIds) {
     if (!knownSampleIds.has(sampleId)) {
-      throw new BundleValidationError(`observed sample id "${sampleId}" is not in the dataset`);
+      throw new BundleValidationError(
+        `observed sample id "${sampleId}" is not in the dataset`,
+      );
     }
   }
   for (const snapshot of snapshots) {

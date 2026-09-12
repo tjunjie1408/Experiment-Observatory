@@ -4,7 +4,7 @@ import LossCurve from "../components/charts/LossCurve.svelte";
 import ParameterContour from "../components/charts/ParameterContour.svelte";
 import ResidualPlot from "../components/charts/ResidualPlot.svelte";
 import ScatterPlot from "../components/charts/ScatterPlot.svelte";
-import { makeBundle } from "./helpers/bundle";
+import { makeBundle, makeExternalBundle } from "./helpers/bundle";
 
 describe("declarative charts", () => {
   it("renders deterministic scatter marks with sample IDs and finite coordinates", () => {
@@ -22,6 +22,23 @@ describe("declarative charts", () => {
     expect(first).not.toContain('data-sample-id="sample-2"');
     expect(first).toContain('class="regression-line"');
     expect(first).not.toMatch(/NaN|Infinity/);
+  });
+
+  it("labels external feature and target axes with their units", () => {
+    const bundle = makeExternalBundle();
+    const snapshot = bundle.snapshots[0]!;
+
+    const scatter = render(ScatterPlot, { props: { bundle, snapshot } }).body;
+    const residual = render(ResidualPlot, { props: { bundle, snapshot } }).body;
+
+    expect(scatter).toContain(
+      "weight_standardized (population standard deviations)",
+    );
+    expect(scatter).toContain("mpg (miles per gallon)");
+    expect(residual).toContain(
+      "weight_standardized (population standard deviations)",
+    );
+    expect(residual).toContain("residual (miles per gallon)");
   });
 
   it("keeps residual marks associated with their source samples", () => {

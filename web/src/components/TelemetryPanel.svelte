@@ -1,6 +1,10 @@
 <script lang="ts">
   import { leastSquares1d } from "../lib/math";
-  import type { RunBundle, Snapshot } from "../lib/schema";
+  import {
+    isExternalDataConfig,
+    type RunBundle,
+    type Snapshot,
+  } from "../lib/schema";
 
   export let bundle: RunBundle;
   export let snapshot: Snapshot;
@@ -94,9 +98,27 @@
       <dt>Stop reason</dt>
       <dd>{bundle.manifest.stopReason ?? "not recorded"}</dd>
     </div>
-    <div>
-      <dt>Dataset seed</dt>
-      <dd>{bundle.manifest.dataConfig.seed}</dd>
-    </div>
+    {#if isExternalDataConfig(bundle.manifest.dataConfig)}
+      <div>
+        <dt>Dataset version</dt>
+        <dd>
+          {bundle.manifest.dataConfig.datasetId}
+          {bundle.manifest.dataConfig.datasetVersion}
+        </dd>
+      </div>
+      <div>
+        <dt>Feature → target</dt>
+        <dd>
+          {bundle.manifest.dataConfig.feature} ({bundle.manifest.dataConfig
+            .featureUnit}) → {bundle.manifest.dataConfig.target} ({bundle
+            .manifest.dataConfig.targetUnit})
+        </dd>
+      </div>
+    {:else}
+      <div>
+        <dt>Dataset seed</dt>
+        <dd>{bundle.manifest.dataConfig.seed}</dd>
+      </div>
+    {/if}
   </dl>
 </aside>

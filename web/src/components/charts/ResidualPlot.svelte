@@ -8,12 +8,21 @@
     niceDomain,
   } from "../../lib/chartGeometry";
   import { residuals } from "../../lib/math";
-  import type { RunBundle, Snapshot } from "../../lib/schema";
+  import {
+    featureLabel,
+    isExternalDataConfig,
+    type RunBundle,
+    type Snapshot,
+  } from "../../lib/schema";
 
   export let bundle: RunBundle;
   export let snapshot: Snapshot;
 
   $: dataset = bundle.manifest.dataset;
+  $: xAxisLabel = featureLabel(bundle.manifest.dataConfig);
+  $: residualLabel = isExternalDataConfig(bundle.manifest.dataConfig)
+    ? `residual (${bundle.manifest.dataConfig.targetUnit})`
+    : "residual";
   $: values = residuals(snapshot.b, snapshot.w, dataset.x, dataset.y);
   $: points = finitePoints(
     dataset.x.map((x, index) => ({
@@ -34,7 +43,12 @@
 </script>
 
 <div class="chart-viewport">
-  <svg viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`} width="100%" height="100%" role="img">
+  <svg
+    viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
+    width="100%"
+    height="100%"
+    role="img"
+  >
     {#if Number.isFinite(zeroY)}
       <line
         x1={CHART_MARGIN.left}
@@ -53,12 +67,14 @@
         data-sample-id={point.sampleId}
       />
     {/each}
-    <text x={CHART_WIDTH / 2} y={CHART_HEIGHT - 6} class="axis-label">x</text>
+    <text x={CHART_WIDTH / 2} y={CHART_HEIGHT - 6} class="axis-label"
+      >{xAxisLabel}</text
+    >
     <text
       x="12"
       y={CHART_HEIGHT / 2}
       class="axis-label"
-      transform={`rotate(-90 12 ${CHART_HEIGHT / 2})`}>residual</text
+      transform={`rotate(-90 12 ${CHART_HEIGHT / 2})`}>{residualLabel}</text
     >
   </svg>
 </div>

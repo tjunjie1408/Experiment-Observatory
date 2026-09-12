@@ -1,12 +1,19 @@
 <script lang="ts">
   import type { PlaybackController } from "../lib/playback";
-  import type { RunBundle, Snapshot } from "../lib/schema";
+  import {
+    featureLabel,
+    targetLabel,
+    type RunBundle,
+    type Snapshot,
+  } from "../lib/schema";
 
   export let controller: PlaybackController;
   export let bundle: RunBundle;
   export let snapshot: Snapshot;
   export let selectedSampleId: string | null;
 
+  $: inputLabel = featureLabel(bundle.manifest.dataConfig);
+  $: outputLabel = targetLabel(bundle.manifest.dataConfig);
   $: sampleIndex =
     selectedSampleId === null
       ? -1
@@ -50,11 +57,11 @@
   {#if selectedSampleId !== null && prediction !== undefined}
     <dl class="sample-values">
       <div>
-        <dt>Input x</dt>
+        <dt>Input {inputLabel}</dt>
         <dd>{format(input)}</dd>
       </div>
       <div>
-        <dt>Actual y</dt>
+        <dt>Actual {outputLabel}</dt>
         <dd>{format(actual)}</dd>
       </div>
       <div>

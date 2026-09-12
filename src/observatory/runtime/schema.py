@@ -14,9 +14,11 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 SCHEMA_VERSION = 1
+EXTERNAL_SCHEMA_VERSION = 2
+SUPPORTED_SCHEMA_VERSIONS = frozenset({SCHEMA_VERSION, EXTERNAL_SCHEMA_VERSION})
 
 RunStatus = Literal["created", "running", "completed", "failed"]
 StopReason = Literal["max_steps", "numerical_error", "io_error", "user_cancelled", "runtime_error"]
@@ -36,6 +38,25 @@ class DataConfig(BaseModel):
     true_weight: float
     noise_std: float
     seed: int
+
+
+class ExternalDataConfig(BaseModel):
+    model_config = ConfigDict(
+        frozen=True, populate_by_name=True, alias_generator=_camel, extra="forbid"
+    )
+
+    source: Literal["external_dataset"]
+    dataset_id: str
+    dataset_version: str
+    version_manifest_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    processed_artifact_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    source_feature: Literal["weight"]
+    feature: Literal["weight_standardized"]
+    feature_unit: Literal["population standard deviations"]
+    target: Literal["mpg"]
+    target_unit: Literal["miles per gallon"]
+    preprocessing: Literal["population_standardization"]
+    split: Literal["all-398-rows"]
 
 
 class ModelConfig(BaseModel):
@@ -80,7 +101,7 @@ class RunManifest(BaseModel):
     stop_reason: StopReason | None = None
     last_valid_step: int | None = None
     error_message: str | None = None
-    data_config: DataConfig
+    data_config: DataConfig | ExternalDataConfig
     dataset: DatasetSummary
     training_config: ModelConfig
     code_provenance: CodeProvenance

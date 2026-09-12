@@ -23,7 +23,16 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from observatory.runtime.schema import SCHEMA_VERSION, Event, RunManifest, Snapshot
+from observatory.runtime.schema import (
+    EXTERNAL_SCHEMA_VERSION,
+    SCHEMA_VERSION,
+    SUPPORTED_SCHEMA_VERSIONS,
+    DataConfig,
+    Event,
+    ExternalDataConfig,
+    RunManifest,
+    Snapshot,
+)
 
 
 class ExportError(ValueError):
@@ -92,13 +101,16 @@ def _assert_snapshot_values_finite(snapshot: Snapshot) -> None:
 
 def _assert_manifest_values_finite(manifest: RunManifest) -> None:
     data = manifest.data_config
-    for field_name, value in {
-        "trueBias": data.true_bias,
-        "trueWeight": data.true_weight,
-        "noiseStd": data.noise_std,
-    }.items():
-        if not math.isfinite(value):
-            raise ExportError(f"non-finite value at manifest.dataConfig.{field_name}: {value!r}")
+    if isinstance(data, DataConfig):
+        for field_name, value in {
+            "trueBias": data.true_bias,
+            "trueWeight": data.true_weight,
+            "noiseStd": data.noise_std,
+        }.items():
+            if not math.isfinite(value):
+                raise ExportError(
+                    f"non-finite value at manifest.dataConfig.{field_name}: {value!r}"
+                )
 
     for index, value in enumerate(manifest.dataset.x):
         if not math.isfinite(value):
@@ -133,10 +145,19 @@ def validate_run_for_export(run_dir: Path) -> tuple[RunManifest, list[Event], li
     except Exception as exc:
         raise ExportError(f"manifest.json failed validation: {exc}") from exc
 
-    if manifest.schema_version != SCHEMA_VERSION:
+    if manifest.schema_version not in SUPPORTED_SCHEMA_VERSIONS:
+        supported = ", ".join(str(version) for version in sorted(SUPPORTED_SCHEMA_VERSIONS))
         raise ExportError(
-            f"unsupported schemaVersion {manifest.schema_version}; expected {SCHEMA_VERSION}"
+            f"unsupported schemaVersion {manifest.schema_version}; expected one of {supported}"
         )
+    if manifest.schema_version == SCHEMA_VERSION and not isinstance(
+        manifest.data_config, DataConfig
+    ):
+        raise ExportError("schemaVersion 1 requires synthetic dataConfig")
+    if manifest.schema_version == EXTERNAL_SCHEMA_VERSION and not isinstance(
+        manifest.data_config, ExternalDataConfig
+    ):
+        raise ExportError("schemaVersion 2 requires external dataConfig")
 
     if manifest.status != "completed":
         raise ExportError(
@@ -152,6 +173,11 @@ def validate_run_for_export(run_dir: Path) -> tuple[RunManifest, list[Event], li
         snapshots = [Snapshot.model_validate(item) for item in snapshots_raw]
     except Exception as exc:
         raise ExportError(f"snapshots.json failed validation: {exc}") from exc
+
+    if not (len(manifest.dataset.sample_ids) == len(manifest.dataset.x) == len(manifest.dataset.y)):
+        raise ExportError("manifest.dataset sampleIds, x, and y must have the same length")
+    if len(set(manifest.dataset.sample_ids)) != len(manifest.dataset.sample_ids):
+        raise ExportError("manifest.dataset sampleIds must be unique")
 
     # Cross-reference checks: steps unique and increasing, run_id
     # consistent across all events, observed sample ids resolvable against
@@ -172,9 +198,10 @@ def validate_run_for_export(run_dir: Path) -> tuple[RunManifest, list[Event], li
                 f"events.jsonl contains an event for a different run "
                 f"({event.run_id} != {manifest.run_id})"
             )
-        if event.schema_version != SCHEMA_VERSION:
+        if event.schema_version != manifest.schema_version:
             raise ExportError(
-                f"events.jsonl event has unsupported schemaVersion {event.schema_version}"
+                f"events.jsonl event schemaVersion {event.schema_version} "
+                f"does not match manifest schemaVersion {manifest.schema_version}"
             )
 
     seqs = [e.seq for e in events]

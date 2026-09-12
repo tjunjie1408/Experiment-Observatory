@@ -22,20 +22,26 @@ import signal
 import subprocess
 import time
 import types
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Protocol
 
-from observatory.data.synthetic import SyntheticLinearConfig, SyntheticLinearDataset, generate
+import numpy as np
+import numpy.typing as npt
+
+from observatory.data.synthetic import SyntheticLinearConfig, generate
 from observatory.models.linear_regression import iter_fit
 from observatory.runtime.schema import (
+    EXTERNAL_SCHEMA_VERSION,
     SCHEMA_VERSION,
     CodeProvenance,
     DataConfig,
     DatasetSummary,
     Event,
+    ExternalDataConfig,
     ModelConfig,
     RunManifest,
     Snapshot,
@@ -126,12 +132,23 @@ def _get_code_provenance(repo_root: Path) -> CodeProvenance:
         return CodeProvenance(unavailable_reason="git metadata unavailable in this environment")
 
 
+class LinearDataset(Protocol):
+    """Minimal dataset shape required by the linear training recorder."""
+
+    @property
+    def sample_ids(self) -> Sequence[str]: ...
+
+    @property
+    def x(self) -> npt.NDArray[np.float64]: ...
+
+    @property
+    def y(self) -> npt.NDArray[np.float64]: ...
+
+
 class RunRecorder:
     """Owns one run directory and writes manifest/events/snapshots for it."""
 
-    def __init__(
-        self, run_dir: Path, manifest: RunManifest, dataset: SyntheticLinearDataset
-    ) -> None:
+    def __init__(self, run_dir: Path, manifest: RunManifest, dataset: LinearDataset) -> None:
         self.run_dir = run_dir
         self.manifest = manifest
         self.dataset = dataset
@@ -168,13 +185,23 @@ class RunRecorder:
     def record_created(self) -> None:
         self._write_manifest(self.manifest)
         self._write_event(
-            Event(run_id=self.manifest.run_id, seq=self._next_seq(), kind="run.created")
+            Event(
+                schema_version=self.manifest.schema_version,
+                run_id=self.manifest.run_id,
+                seq=self._next_seq(),
+                kind="run.created",
+            )
         )
 
     def record_started(self) -> None:
         self._write_manifest(self.manifest.model_copy(update={"status": "running"}))
         self._write_event(
-            Event(run_id=self.manifest.run_id, seq=self._next_seq(), kind="run.started")
+            Event(
+                schema_version=self.manifest.schema_version,
+                run_id=self.manifest.run_id,
+                seq=self._next_seq(),
+                kind="run.started",
+            )
         )
 
     def record_step(self, snapshot: Snapshot) -> None:
@@ -185,6 +212,7 @@ class RunRecorder:
         )
         self._write_event(
             Event(
+                schema_version=self.manifest.schema_version,
                 run_id=self.manifest.run_id,
                 seq=self._next_seq(),
                 kind="step.recorded",
@@ -204,7 +232,12 @@ class RunRecorder:
             )
         )
         self._write_event(
-            Event(run_id=self.manifest.run_id, seq=self._next_seq(), kind="run.completed")
+            Event(
+                schema_version=self.manifest.schema_version,
+                run_id=self.manifest.run_id,
+                seq=self._next_seq(),
+                kind="run.completed",
+            )
         )
 
     def record_failed(self, *, stop_reason: str, message: str) -> None:
@@ -221,6 +254,7 @@ class RunRecorder:
         )
         self._write_event(
             Event(
+                schema_version=self.manifest.schema_version,
                 run_id=self.manifest.run_id,
                 seq=self._next_seq(),
                 kind="run.failed",
@@ -247,6 +281,58 @@ def _sigint_guard() -> Iterator[list[bool]]:
         signal.signal(signal.SIGINT, previous)
 
 
+def _create_run_recorder(
+    *,
+    schema_version: int,
+    experiment_id: str,
+    data_config: DataConfig | ExternalDataConfig,
+    dataset: LinearDataset,
+    dataset_identity: str,
+    model_cfg: ModelConfig,
+    runs_root: Path,
+    repo_root: Path,
+    max_observed_samples: int,
+) -> RunRecorder:
+    if dataset.x.ndim != 1 or dataset.x.shape != dataset.y.shape or dataset.x.size < 2:
+        raise ValueError(
+            "x and y must be one-dimensional arrays of equal shape with at least 2 samples"
+        )
+    if len(dataset.sample_ids) != dataset.x.size:
+        raise ValueError("sample_ids, x, and y must have the same length")
+    if len(set(dataset.sample_ids)) != len(dataset.sample_ids):
+        raise ValueError("sample_ids must be unique")
+    if not np.isfinite(dataset.x).all() or not np.isfinite(dataset.y).all():
+        raise ValueError("x and y must contain only finite values")
+
+    run_id = _new_run_id(experiment_id)
+    run_dir = runs_root / run_id
+    run_dir.mkdir(parents=True, exist_ok=False)
+
+    observed_sample_ids = list(
+        dataset.sample_ids[: min(max_observed_samples, len(dataset.sample_ids))]
+    )
+    manifest = RunManifest(
+        schema_version=schema_version,
+        run_id=run_id,
+        experiment_id=experiment_id,
+        created_at=datetime.now(UTC).isoformat(),
+        status="created",
+        data_config=data_config,
+        dataset=DatasetSummary(
+            generator_id=dataset_identity,
+            sample_ids=list(dataset.sample_ids),
+            x=[float(v) for v in dataset.x],
+            y=[float(v) for v in dataset.y],
+        ),
+        training_config=model_cfg,
+        code_provenance=_get_code_provenance(repo_root),
+        observed_sample_ids=observed_sample_ids,
+    )
+    recorder = RunRecorder(run_dir, manifest, dataset)
+    recorder.record_created()
+    return recorder
+
+
 def create_run(
     *,
     experiment_id: str,
@@ -256,24 +342,11 @@ def create_run(
     repo_root: Path,
     max_observed_samples: int = 5,
 ) -> RunRecorder:
-    """Validate config, generate data, and write the `created` manifest.
-
-    Raises ValueError before any run directory exists if config is invalid:
-    no new run's side effects appear for a rejected config.
-    """
+    """Validate synthetic config and write an unchanged schema-v1 created manifest."""
     dataset = generate(data_config)  # raises ValueError for invalid config
-
-    run_id = _new_run_id(experiment_id)
-    run_dir = runs_root / run_id
-    run_dir.mkdir(parents=True, exist_ok=False)
-
-    observed_sample_ids = dataset.sample_ids[: min(max_observed_samples, len(dataset.sample_ids))]
-
-    manifest = RunManifest(
-        run_id=run_id,
+    return _create_run_recorder(
+        schema_version=SCHEMA_VERSION,
         experiment_id=experiment_id,
-        created_at=datetime.now(UTC).isoformat(),
-        status="created",
         data_config=DataConfig(
             generator=data_config.__class__.__name__,
             n_samples=data_config.n_samples,
@@ -282,20 +355,38 @@ def create_run(
             noise_std=data_config.noise_std,
             seed=data_config.seed,
         ),
-        dataset=DatasetSummary(
-            generator_id=dataset.generator_id,
-            sample_ids=dataset.sample_ids,
-            x=[float(v) for v in dataset.x],
-            y=[float(v) for v in dataset.y],
-        ),
-        training_config=model_cfg,
-        code_provenance=_get_code_provenance(repo_root),
-        observed_sample_ids=observed_sample_ids,
+        dataset=dataset,
+        dataset_identity=dataset.generator_id,
+        model_cfg=model_cfg,
+        runs_root=runs_root,
+        repo_root=repo_root,
+        max_observed_samples=max_observed_samples,
     )
 
-    recorder = RunRecorder(run_dir, manifest, dataset)
-    recorder.record_created()
-    return recorder
+
+def create_external_run(
+    *,
+    experiment_id: str,
+    data_config: ExternalDataConfig,
+    dataset: LinearDataset,
+    dataset_identity: str,
+    model_cfg: ModelConfig,
+    runs_root: Path,
+    repo_root: Path,
+    max_observed_samples: int = 5,
+) -> RunRecorder:
+    """Write a schema-v2 created manifest for a verified external linear dataset."""
+    return _create_run_recorder(
+        schema_version=EXTERNAL_SCHEMA_VERSION,
+        experiment_id=experiment_id,
+        data_config=data_config,
+        dataset=dataset,
+        dataset_identity=dataset_identity,
+        model_cfg=model_cfg,
+        runs_root=runs_root,
+        repo_root=repo_root,
+        max_observed_samples=max_observed_samples,
+    )
 
 
 def run_training(recorder: RunRecorder) -> RunManifest:
@@ -368,6 +459,7 @@ __all__ = [
     "RunIOError",
     "RunRecorder",
     "RunResult",
+    "create_external_run",
     "create_run",
     "run_training",
 ]

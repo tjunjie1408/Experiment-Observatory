@@ -52,6 +52,16 @@ def test_completed_run_writes_consistent_files(tmp_path: Path) -> None:
 
     assert manifest_on_disk["runId"] == manifest.run_id
     assert manifest_on_disk["status"] == "completed"
+    assert manifest_on_disk["schemaVersion"] == 1
+    assert manifest_on_disk["dataConfig"] == {
+        "generator": "SyntheticLinearConfig",
+        "nSamples": 20,
+        "trueBias": 1.0,
+        "trueWeight": 2.0,
+        "noiseStd": 0.3,
+        "seed": 42,
+    }
+    assert {event["schemaVersion"] for event in events} == {1}
     assert len(snapshots) == model_cfg.n_updates + 1
     assert [s["step"] for s in snapshots] == list(range(model_cfg.n_updates + 1))
 

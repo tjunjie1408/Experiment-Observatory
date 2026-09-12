@@ -8,12 +8,19 @@
     niceDomain,
   } from "../../lib/chartGeometry";
   import { predict } from "../../lib/math";
-  import type { RunBundle, Snapshot } from "../../lib/schema";
+  import {
+    featureLabel,
+    targetLabel,
+    type RunBundle,
+    type Snapshot,
+  } from "../../lib/schema";
 
   export let bundle: RunBundle;
   export let snapshot: Snapshot;
 
   $: dataset = bundle.manifest.dataset;
+  $: xAxisLabel = featureLabel(bundle.manifest.dataConfig);
+  $: yAxisLabel = targetLabel(bundle.manifest.dataConfig);
   $: predictions = predict(snapshot.b, snapshot.w, dataset.x);
   $: points = finitePoints(
     dataset.x.map((x, index) => ({
@@ -42,7 +49,12 @@
 </script>
 
 <div class="chart-viewport">
-  <svg viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`} width="100%" height="100%" role="img">
+  <svg
+    viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
+    width="100%"
+    height="100%"
+    role="img"
+  >
     {#each points as point}
       <circle
         cx={xScale(point.x)}
@@ -61,12 +73,14 @@
         class="regression-line"
       />
     {/if}
-    <text x={CHART_WIDTH / 2} y={CHART_HEIGHT - 6} class="axis-label">x</text>
+    <text x={CHART_WIDTH / 2} y={CHART_HEIGHT - 6} class="axis-label"
+      >{xAxisLabel}</text
+    >
     <text
       x="12"
       y={CHART_HEIGHT / 2}
       class="axis-label"
-      transform={`rotate(-90 12 ${CHART_HEIGHT / 2})`}>y</text
+      transform={`rotate(-90 12 ${CHART_HEIGHT / 2})`}>{yAxisLabel}</text
     >
   </svg>
 </div>

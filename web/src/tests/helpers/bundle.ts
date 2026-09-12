@@ -1,23 +1,28 @@
-import type { RunBundle, Snapshot } from "../../lib/schema";
+import type { ExternalDataConfig, RunBundle, Snapshot } from "../../lib/schema";
 
-export function makeBundle(options: {
+interface BundleOptions {
   runId?: string;
   snapshotCount?: number;
   seed?: number;
   initialBias?: number;
   initialWeight?: number;
   learningRate?: number;
-} = {}): RunBundle {
+}
+
+export function makeBundle(options: BundleOptions = {}): RunBundle {
   const snapshotCount = options.snapshotCount ?? 3;
-  const snapshots: Snapshot[] = Array.from({ length: snapshotCount }, (_, step) => ({
-    step,
-    b: step * 0.1,
-    w: step * 0.2,
-    gradientB: -0.1,
-    gradientW: -0.2,
-    trainMse: 10 / (step + 1),
-    observedPredictions: { "sample-1": step * 0.2 },
-  }));
+  const snapshots: Snapshot[] = Array.from(
+    { length: snapshotCount },
+    (_, step) => ({
+      step,
+      b: step * 0.1,
+      w: step * 0.2,
+      gradientB: -0.1,
+      gradientW: -0.2,
+      trainMse: 10 / (step + 1),
+      observedPredictions: { "sample-1": step * 0.2 },
+    }),
+  );
 
   return {
     manifest: {
@@ -61,4 +66,32 @@ export function makeBundle(options: {
     events: [],
     snapshots,
   };
+}
+
+export function makeExternalBundle(
+  dataConfigOverrides: Partial<ExternalDataConfig> = {},
+  options: BundleOptions = {},
+): RunBundle {
+  const bundle = makeBundle(options);
+  bundle.manifest.schemaVersion = 2;
+  bundle.manifest.dataConfig = {
+    source: "external_dataset",
+    datasetId: "auto-mpg",
+    datasetVersion: "1.0.0",
+    versionManifestSha256: "version-manifest-sha256",
+    processedArtifactSha256: "processed-artifact-sha256",
+    sourceFeature: "weight",
+    feature: "weight_standardized",
+    featureUnit: "population standard deviations",
+    target: "mpg",
+    targetUnit: "miles per gallon",
+    preprocessing: "population_standardization",
+    split: "all-398-rows",
+    ...dataConfigOverrides,
+  };
+  bundle.manifest.dataset.generatorId = "auto-mpg";
+  bundle.events.forEach((event) => {
+    event.schemaVersion = 2;
+  });
+  return bundle;
 }
