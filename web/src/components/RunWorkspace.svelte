@@ -6,7 +6,10 @@
   import PlaybackControls from "./PlaybackControls.svelte";
   import SampleInspector from "./SampleInspector.svelte";
   import TelemetryPanel from "./TelemetryPanel.svelte";
-  import ChartAdapter from "./charts/ChartAdapter.svelte";
+  import LossCurve from "./charts/LossCurve.svelte";
+  import ParameterContour from "./charts/ParameterContour.svelte";
+  import ResidualPlot from "./charts/ResidualPlot.svelte";
+  import ScatterPlot from "./charts/ScatterPlot.svelte";
 
   export let path: string;
   export let label: "Run A" | "Run B";
@@ -125,12 +128,7 @@
             <h3>Observed samples & linear fit</h3>
             <span>ŷ = w·x + b</span>
           </header>
-          <ChartAdapter
-            kind="scatter"
-            bundle={state.bundle}
-            {snapshot}
-            currentStep={state.currentStep}
-          />
+          <ScatterPlot bundle={state.bundle} {snapshot} />
           <footer>
             <span>N={state.bundle.manifest.dataset.x.length}</span><strong
               >w={snapshot.w.toFixed(4)} b={snapshot.b.toFixed(4)}</strong
@@ -142,12 +140,7 @@
             <h3>Residual distribution</h3>
             <span>e = ŷ - y</span>
           </header>
-          <ChartAdapter
-            kind="residuals"
-            bundle={state.bundle}
-            {snapshot}
-            currentStep={state.currentStep}
-          />
+          <ResidualPlot bundle={state.bundle} {snapshot} />
           <footer>
             <span>Derived from recorded parameters</span><strong
               >Step {snapshot.step}</strong
@@ -159,12 +152,7 @@
             <h3>MSE loss vs. step</h3>
             <span>Recorded trace</span>
           </header>
-          <ChartAdapter
-            kind="loss"
-            bundle={state.bundle}
-            {snapshot}
-            currentStep={state.currentStep}
-          />
+          <LossCurve bundle={state.bundle} currentStep={state.currentStep} />
           <footer>
             <span>Initial {state.bundle.snapshots[0]?.trainMse.toFixed(4)}</span
             ><strong>Current {snapshot.trainMse.toFixed(4)}</strong>
@@ -175,10 +163,8 @@
             <h3>Parameter trajectory</h3>
             <span>Derived loss surface</span>
           </header>
-          <ChartAdapter
-            kind="contour"
+          <ParameterContour
             bundle={state.bundle}
-            {snapshot}
             currentStep={state.currentStep}
           />
           <footer>

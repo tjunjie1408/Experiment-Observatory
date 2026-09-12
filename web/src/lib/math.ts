@@ -9,7 +9,12 @@ export function predict(b: number, w: number, x: number[]): number[] {
   return x.map((xi) => b + w * xi);
 }
 
-export function residuals(b: number, w: number, x: number[], y: number[]): number[] {
+export function residuals(
+  b: number,
+  w: number,
+  x: number[],
+  y: number[],
+): number[] {
   const preds = predict(b, w, x);
   return preds.map((p, i) => p - (y[i] as number));
 }
@@ -18,6 +23,38 @@ export function mse(b: number, w: number, x: number[], y: number[]): number {
   const r = residuals(b, w, x, y);
   const sumSq = r.reduce((acc, ri) => acc + ri * ri, 0);
   return sumSq / r.length;
+}
+
+export interface LeastSquaresFit {
+  b: number;
+  w: number;
+  mse: number;
+}
+
+/** Derive the one-feature ordinary least-squares optimum from the embedded dataset. */
+export function leastSquares1d(
+  x: number[],
+  y: number[],
+): LeastSquaresFit | null {
+  if (x.length < 2 || x.length !== y.length) return null;
+  if (!x.every(Number.isFinite) || !y.every(Number.isFinite)) return null;
+
+  const xMean = x.reduce((sum, value) => sum + value, 0) / x.length;
+  const yMean = y.reduce((sum, value) => sum + value, 0) / y.length;
+  let covariance = 0;
+  let variance = 0;
+  for (let index = 0; index < x.length; index += 1) {
+    const centeredX = (x[index] as number) - xMean;
+    covariance += centeredX * ((y[index] as number) - yMean);
+    variance += centeredX * centeredX;
+  }
+  if (!Number.isFinite(variance) || variance <= 0) return null;
+
+  const w = covariance / variance;
+  const b = yMean - w * xMean;
+  const optimumMse = mse(b, w, x, y);
+  if (![b, w, optimumMse].every(Number.isFinite)) return null;
+  return { b, w, mse: optimumMse };
 }
 
 export interface ContourGrid {
@@ -46,6 +83,8 @@ export function computeContourGrid(
     bValues.push(bRange[0] + t * (bRange[1] - bRange[0]));
     wValues.push(wRange[0] + t * (wRange[1] - wRange[0]));
   }
-  const grid: number[][] = bValues.map((b) => wValues.map((w) => mse(b, w, x, y)));
+  const grid: number[][] = bValues.map((b) =>
+    wValues.map((w) => mse(b, w, x, y)),
+  );
   return { bValues, wValues, grid };
 }
