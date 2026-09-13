@@ -1,12 +1,31 @@
 import { describe, expect, it } from "vitest";
 import { validateBundle } from "../lib/schema";
-import { makeBundle, makeExternalBundle } from "./helpers/bundle";
+import { makeBundle, makeExternalBundle, makeKMeansBundle } from "./helpers/bundle";
 
 function validateFixture(bundle: ReturnType<typeof makeBundle>) {
   return validateBundle(bundle.manifest, bundle.events, bundle.snapshots);
 }
 
 describe("validateBundle schema versions", () => {
+  it("accepts a phase-consistent schema-v3 K-means bundle", () => {
+    const bundle = makeKMeansBundle();
+
+    const validated = validateBundle(bundle.manifest, bundle.events, bundle.snapshots);
+
+    expect(validated.manifest.schemaVersion).toBe(3);
+    expect(validated.snapshots[0]).toMatchObject({ phase: "assignment", inertia: 4 });
+  });
+
+  it("recognizes service terminal states while keeping static replay completed-only", () => {
+    const bundle = makeBundle();
+    bundle.manifest.status = "interrupted";
+    bundle.manifest.stopReason = "forced_termination";
+
+    expect(() => validateFixture(bundle)).toThrow(
+      /not "completed"; only completed runs can be replayed/,
+    );
+  });
+
   it("accepts a v1 manifest with the synthetic data configuration", () => {
     const bundle = makeBundle();
 
@@ -126,7 +145,7 @@ describe("validateBundle schema versions", () => {
   it("rejects unsupported manifest versions and event versions unequal to the manifest", () => {
     const unsupported = makeBundle();
     (unsupported.manifest as unknown as Record<string, unknown>).schemaVersion =
-      3;
+      4;
     const v2 = makeExternalBundle();
     v2.events.push({
       schemaVersion: 1,
@@ -143,7 +162,7 @@ describe("validateBundle schema versions", () => {
         unsupported.events,
         unsupported.snapshots,
       ),
-    ).toThrow(/supports schema versions 1 and 2/);
+    ).toThrow(/supports schema versions 1, 2, and 3/);
     expect(() => validateBundle(v2.manifest, v2.events, v2.snapshots)).toThrow(
       /event schemaVersion 1 does not match manifest schemaVersion 2/,
     );

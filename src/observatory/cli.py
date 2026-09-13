@@ -33,6 +33,7 @@ from observatory.data.auto_mpg import (
     standardize_weight,
 )
 from observatory.data.synthetic import SyntheticLinearConfig
+from observatory.kmeans_study import run_kmeans_study
 from observatory.models.linear_regression import fit, least_squares_reference, mse
 from observatory.runtime.export import ExportError, export_run
 from observatory.runtime.record import RunIOError, create_external_run, create_run, run_training
@@ -386,6 +387,20 @@ def _cmd_export(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_run_kmeans_study(args: argparse.Namespace) -> int:
+    try:
+        manifests = run_kmeans_study(Path(args.config), Path(args.runs_root), REPO_ROOT)
+    except (OSError, ValueError, RunIOError) as exc:
+        print(f"rejected: {exc}", file=sys.stderr)
+        return 2
+    for manifest in manifests:
+        print(
+            f"run {manifest.run_id}: status={manifest.status} "
+            f"stop_reason={manifest.stop_reason} inertia_seed={manifest.training_config.init_seed}"
+        )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="observatory")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -437,6 +452,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="Directory under which run directories are created (default: ./runs).",
     )
     run_all_parser.set_defaults(func=_cmd_run_all)
+
+    kmeans_parser = subparsers.add_parser(
+        "run-kmeans-study", help="Run the configured five-seed K-means initialization study."
+    )
+    kmeans_parser.add_argument("config", help="Path to a K-means study YAML file.")
+    kmeans_parser.add_argument(
+        "--runs-root",
+        default=str(DEFAULT_RUNS_ROOT),
+        help="Directory under which run directories are created (default: ./runs).",
+    )
+    kmeans_parser.set_defaults(func=_cmd_run_kmeans_study)
 
     export_parser = subparsers.add_parser(
         "export", help="Export a completed run to a self-contained static bundle."

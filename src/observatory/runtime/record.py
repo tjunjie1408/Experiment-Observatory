@@ -114,6 +114,77 @@ def _append_jsonl(path: Path, line_payload: object) -> None:
         raise RunIOError(f"failed to append to {path}: {exc}") from exc
 
 
+def load_run_manifest(run_dir: Path) -> RunManifest:
+    """Load one persisted manifest through the authoritative Python schema."""
+    try:
+        path = run_dir / "manifest.json"
+        last_exc: OSError | None = None
+        for attempt in range(_REPLACE_MAX_ATTEMPTS):
+            try:
+                return RunManifest.model_validate_json(path.read_text(encoding="utf-8"))
+            except PermissionError as exc:
+                last_exc = exc
+                if attempt < _REPLACE_MAX_ATTEMPTS - 1:
+                    time.sleep(_REPLACE_RETRY_DELAY_S)
+        assert last_exc is not None
+        raise last_exc
+    except (OSError, ValueError) as exc:
+        raise RunIOError(f"failed to read manifest from {run_dir}: {exc}") from exc
+
+
+def load_run_events(run_dir: Path) -> list[Event]:
+    """Load complete persisted events; a malformed line is an explicit read failure."""
+    try:
+        path = run_dir / "events.jsonl"
+        last_exc: OSError | None = None
+        for attempt in range(_REPLACE_MAX_ATTEMPTS):
+            try:
+                lines = path.read_text(encoding="utf-8").splitlines()
+                break
+            except PermissionError as exc:
+                last_exc = exc
+                if attempt < _REPLACE_MAX_ATTEMPTS - 1:
+                    time.sleep(_REPLACE_RETRY_DELAY_S)
+        else:
+            assert last_exc is not None
+            raise last_exc
+        return [Event.model_validate_json(line) for line in lines if line.strip()]
+    except (OSError, ValueError) as exc:
+        raise RunIOError(f"failed to read events from {run_dir}: {exc}") from exc
+
+
+def interrupt_orphaned_run(run_dir: Path) -> RunManifest:
+    """Finalize an unowned service run after restart without reconstructing training state."""
+    manifest = load_run_manifest(run_dir)
+    if manifest.status not in {"running", "cancelling"}:
+        return manifest
+    events = load_run_events(run_dir)
+    next_seq = max((event.seq for event in events), default=0) + 1
+    interrupted = manifest.model_copy(
+        update={
+            "status": "interrupted",
+            "stop_reason": "service_restart",
+            "error_message": "service restarted without an owning worker",
+        }
+    )
+    _atomic_write_json(
+        run_dir / "manifest.json", json.loads(interrupted.model_dump_json(by_alias=True))
+    )
+    _append_jsonl(
+        run_dir / "events.jsonl",
+        json.loads(
+            Event(
+                schema_version=manifest.schema_version,
+                run_id=manifest.run_id,
+                seq=next_seq,
+                kind="run.interrupted",
+                message="service restarted without an owning worker",
+            ).model_dump_json(by_alias=True)
+        ),
+    )
+    return interrupted
+
+
 def _get_code_provenance(repo_root: Path) -> CodeProvenance:
     try:
         commit = subprocess.check_output(
@@ -238,6 +309,61 @@ class RunRecorder:
                 run_id=self.manifest.run_id,
                 seq=self._next_seq(),
                 kind="run.completed",
+            )
+        )
+
+    def record_cancelling(self) -> None:
+        if self.manifest.status == "cancelling":
+            return
+        self._write_manifest(self.manifest.model_copy(update={"status": "cancelling"}))
+        self._write_event(
+            Event(
+                schema_version=self.manifest.schema_version,
+                run_id=self.manifest.run_id,
+                seq=self._next_seq(),
+                kind="run.cancelling",
+            )
+        )
+
+    def record_cancelled(self) -> None:
+        last_step = self._snapshots[-1].step if self._snapshots else None
+        self._write_manifest(
+            self.manifest.model_copy(
+                update={
+                    "status": "cancelled",
+                    "stop_reason": "user_cancelled",
+                    "last_valid_step": last_step,
+                }
+            )
+        )
+        self._write_event(
+            Event(
+                schema_version=self.manifest.schema_version,
+                run_id=self.manifest.run_id,
+                seq=self._next_seq(),
+                kind="run.cancelled",
+            )
+        )
+
+    def record_interrupted(self, *, stop_reason: str, message: str) -> None:
+        last_step = self._snapshots[-1].step if self._snapshots else None
+        self._write_manifest(
+            self.manifest.model_copy(
+                update={
+                    "status": "interrupted",
+                    "stop_reason": stop_reason,
+                    "last_valid_step": last_step,
+                    "error_message": message,
+                }
+            )
+        )
+        self._write_event(
+            Event(
+                schema_version=self.manifest.schema_version,
+                run_id=self.manifest.run_id,
+                seq=self._next_seq(),
+                kind="run.interrupted",
+                message=message,
             )
         )
 

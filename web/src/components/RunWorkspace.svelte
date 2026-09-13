@@ -2,7 +2,8 @@
   import { onMount } from "svelte";
   import { BundleLoadError, loadRunBundle } from "../lib/loader";
   import { PlaybackController, type PlaybackState } from "../lib/playback";
-  import type { RunBundle } from "../lib/schema";
+  import { isKMeansBundle, type RunBundle } from "../lib/schema";
+  import KMeansPanel from "./KMeansPanel.svelte";
   import PlaybackControls from "./PlaybackControls.svelte";
   import SampleInspector from "./SampleInspector.svelte";
   import TelemetryPanel from "./TelemetryPanel.svelte";
@@ -24,7 +25,10 @@
   let loadToken = 0;
   let activeRequest: AbortController | null = null;
 
-  $: snapshot = state.bundle?.snapshots[state.currentStep];
+  $: kmeansBundle = state.bundle && isKMeansBundle(state.bundle) ? state.bundle : null;
+  $: kmeansSnapshot = kmeansBundle?.snapshots[state.currentStep];
+  $: linearBundle = state.bundle && !isKMeansBundle(state.bundle) ? state.bundle : null;
+  $: linearSnapshot = linearBundle?.snapshots[state.currentStep];
   $: if (mounted && path && path !== requestedPath) void load(path);
 
   async function load(nextPath: string): Promise<void> {
@@ -120,7 +124,9 @@
       <p>{state.errorMessage}</p>
       <button type="button" on:click={() => load(path)}>Retry load</button>
     </div>
-  {:else if state.bundle && snapshot}
+  {:else if kmeansBundle && kmeansSnapshot}
+    <KMeansPanel bundle={kmeansBundle} snapshot={kmeansSnapshot} />
+  {:else if linearBundle && linearSnapshot}
     <div class="workspace-layout">
       <div class="charts-grid">
         <article class="chart-card chart-primary">
@@ -128,10 +134,10 @@
             <h3>Observed samples & linear fit</h3>
             <span>ŷ = w·x + b</span>
           </header>
-          <ScatterPlot bundle={state.bundle} {snapshot} />
+          <ScatterPlot bundle={linearBundle} snapshot={linearSnapshot} />
           <footer>
-            <span>N={state.bundle.manifest.dataset.x.length}</span><strong
-              >w={snapshot.w.toFixed(4)} b={snapshot.b.toFixed(4)}</strong
+            <span>N={linearBundle.manifest.dataset.x.length}</span><strong
+              >w={linearSnapshot.w.toFixed(4)} b={linearSnapshot.b.toFixed(4)}</strong
             >
           </footer>
         </article>
@@ -140,10 +146,10 @@
             <h3>Residual distribution</h3>
             <span>e = ŷ - y</span>
           </header>
-          <ResidualPlot bundle={state.bundle} {snapshot} />
+          <ResidualPlot bundle={linearBundle} snapshot={linearSnapshot} />
           <footer>
             <span>Derived from recorded parameters</span><strong
-              >Step {snapshot.step}</strong
+              >Step {linearSnapshot.step}</strong
             >
           </footer>
         </article>
@@ -152,10 +158,10 @@
             <h3>MSE loss vs. step</h3>
             <span>Recorded trace</span>
           </header>
-          <LossCurve bundle={state.bundle} currentStep={state.currentStep} />
+          <LossCurve bundle={linearBundle} currentStep={state.currentStep} />
           <footer>
-            <span>Initial {state.bundle.snapshots[0]?.trainMse.toFixed(4)}</span
-            ><strong>Current {snapshot.trainMse.toFixed(4)}</strong>
+            <span>Initial {linearBundle.snapshots[0]?.trainMse.toFixed(4)}</span
+            ><strong>Current {linearSnapshot.trainMse.toFixed(4)}</strong>
           </footer>
         </article>
         <article class="chart-card">
@@ -164,7 +170,7 @@
             <span>Derived loss surface</span>
           </header>
           <ParameterContour
-            bundle={state.bundle}
+            bundle={linearBundle}
             currentStep={state.currentStep}
           />
           <footer>
@@ -173,11 +179,11 @@
         </article>
       </div>
       <div class="inspector-stack">
-        <TelemetryPanel bundle={state.bundle} {snapshot} />
+        <TelemetryPanel bundle={linearBundle} snapshot={linearSnapshot} />
         <SampleInspector
           {controller}
-          bundle={state.bundle}
-          {snapshot}
+          bundle={linearBundle}
+          snapshot={linearSnapshot}
           selectedSampleId={state.selectedSampleId}
         />
       </div>

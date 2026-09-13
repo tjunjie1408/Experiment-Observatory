@@ -22,9 +22,11 @@ import math
 import shutil
 import tempfile
 from pathlib import Path
+from typing import Any
 
 from observatory.runtime.schema import (
     EXTERNAL_SCHEMA_VERSION,
+    KMEANS_SCHEMA_VERSION,
     SCHEMA_VERSION,
     SUPPORTED_SCHEMA_VERSIONS,
     DataConfig,
@@ -32,6 +34,9 @@ from observatory.runtime.schema import (
     Event,
     ExternalDataConfig,
     ExternalDatasetSummary,
+    KMeansEvent,
+    KMeansRunManifest,
+    KMeansSnapshot,
     RunManifest,
     Snapshot,
 )
@@ -39,6 +44,9 @@ from observatory.runtime.schema import (
 
 class ExportError(ValueError):
     """Raised when a run cannot be exported as-is; no output is written."""
+
+
+ManifestArtifact = RunManifest | KMeansRunManifest
 
 
 def _read_json(path: Path, *, label: str) -> object:
@@ -71,6 +79,65 @@ def _read_events_jsonl(path: Path) -> list[Event]:
         except Exception as exc:  # pydantic ValidationError, kept broad for a single clear message
             raise ExportError(f"events.jsonl line {line_number} failed validation: {exc}") from exc
     return events
+
+
+def _read_kmeans_events_jsonl(path: Path) -> list[KMeansEvent]:
+    if not path.is_file():
+        raise ExportError(f"events.jsonl not found: {path}")
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+        return [KMeansEvent.model_validate_json(line) for line in lines if line.strip()]
+    except (OSError, ValueError) as exc:
+        raise ExportError(f"events.jsonl failed schema-v3 validation: {exc}") from exc
+
+
+def _validate_kmeans_run(
+    run_dir: Path, manifest_raw: object
+) -> tuple[KMeansRunManifest, list[KMeansEvent], list[KMeansSnapshot]]:
+    try:
+        manifest = KMeansRunManifest.model_validate(manifest_raw)
+    except Exception as exc:
+        raise ExportError(f"manifest.json failed schema-v3 validation: {exc}") from exc
+    if manifest.status != "completed":
+        raise ExportError(
+            f"run is not completed (status={manifest.status}); only completed runs can be exported"
+        )
+    events = _read_kmeans_events_jsonl(run_dir / "events.jsonl")
+    raw_snapshots = _read_json(run_dir / "snapshots.json", label="snapshots.json")
+    if not isinstance(raw_snapshots, list):
+        raise ExportError("snapshots.json must contain a JSON array")
+    try:
+        snapshots = [KMeansSnapshot.model_validate(item) for item in raw_snapshots]
+    except Exception as exc:
+        raise ExportError(f"snapshots.json failed schema-v3 validation: {exc}") from exc
+    if manifest.n_snapshots_written != len(snapshots):
+        raise ExportError("manifest snapshot count does not match snapshots.json")
+    if len(manifest.dataset.sample_ids) != len(manifest.dataset.points):
+        raise ExportError("manifest dataset sampleIds and points must have the same length")
+    n_samples = len(manifest.dataset.points)
+    n_clusters = manifest.training_config.n_clusters
+    for snapshot in snapshots:
+        if len(snapshot.assignments) != n_samples or len(snapshot.centers) != n_clusters:
+            raise ExportError(f"snapshot step {snapshot.step} has inconsistent K-means shapes")
+        if any(label < 0 or label >= n_clusters for label in snapshot.assignments):
+            raise ExportError(f"snapshot step {snapshot.step} has an invalid cluster assignment")
+        expected = sum(
+            sum((value - snapshot.centers[label][axis]) ** 2 for axis, value in enumerate(point))
+            for point, label in zip(manifest.dataset.points, snapshot.assignments, strict=True)
+        )
+        if not math.isfinite(snapshot.inertia) or not math.isclose(
+            snapshot.inertia, expected, rel_tol=1e-12, abs_tol=1e-12
+        ):
+            raise ExportError(f"snapshot step {snapshot.step} inertia is inconsistent")
+    steps = [snapshot.step for snapshot in snapshots]
+    if steps != list(range(len(snapshots))):
+        raise ExportError("schema-v3 snapshot steps must be contiguous from zero")
+    seqs = [event.seq for event in events]
+    if seqs != list(range(1, len(events) + 1)):
+        raise ExportError("schema-v3 event seq values must be contiguous from one")
+    if any(event.run_id != manifest.run_id for event in events):
+        raise ExportError("events.jsonl contains an event for a different run")
+    return manifest, events, snapshots
 
 
 def _assert_snapshot_values_finite(snapshot: Snapshot) -> None:
@@ -133,7 +200,9 @@ def _assert_manifest_values_finite(manifest: RunManifest) -> None:
             )
 
 
-def validate_run_for_export(run_dir: Path) -> tuple[RunManifest, list[Event], list[Snapshot]]:
+def validate_run_for_export(
+    run_dir: Path,
+) -> tuple[ManifestArtifact, list[Any], list[Any]]:
     """Load and cross-validate a run's files without writing anything.
 
     Raises ExportError with a specific reason for any of: missing files,
@@ -142,6 +211,11 @@ def validate_run_for_export(run_dir: Path) -> tuple[RunManifest, list[Event], li
     manifest/events/snapshots.
     """
     manifest_raw = _read_json(run_dir / "manifest.json", label="manifest.json")
+    if (
+        isinstance(manifest_raw, dict)
+        and manifest_raw.get("schemaVersion") == KMEANS_SCHEMA_VERSION
+    ):
+        return _validate_kmeans_run(run_dir, manifest_raw)
     try:
         manifest = RunManifest.model_validate(manifest_raw)
     except Exception as exc:
@@ -237,7 +311,7 @@ def validate_run_for_export(run_dir: Path) -> tuple[RunManifest, list[Event], li
     return manifest, events, snapshots
 
 
-def export_run(run_dir: Path, target_dir: Path) -> RunManifest:
+def export_run(run_dir: Path, target_dir: Path) -> ManifestArtifact:
     """Export a completed, valid run to `target_dir` as a self-contained
     static bundle: manifest.json, events.jsonl, snapshots.json.
 

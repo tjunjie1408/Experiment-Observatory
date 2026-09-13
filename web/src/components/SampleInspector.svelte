@@ -3,12 +3,12 @@
   import {
     featureLabel,
     targetLabel,
-    type RunBundle,
+    type LinearRunBundle,
     type Snapshot,
   } from "../lib/schema";
 
   export let controller: PlaybackController;
-  export let bundle: RunBundle;
+  export let bundle: LinearRunBundle;
   export let snapshot: Snapshot;
   export let selectedSampleId: string | null;
 

@@ -9,9 +9,9 @@
     segmentConsecutivePoints,
     serializePoints,
   } from "../../lib/chartGeometry";
-  import type { RunBundle } from "../../lib/schema";
+  import type { LinearRunBundle } from "../../lib/schema";
 
-  export let bundle: RunBundle;
+  export let bundle: LinearRunBundle;
   export let currentStep: number;
 
   $: recorded = finitePoints(

@@ -18,10 +18,25 @@ from pydantic import BaseModel, ConfigDict, Field
 
 SCHEMA_VERSION = 1
 EXTERNAL_SCHEMA_VERSION = 2
-SUPPORTED_SCHEMA_VERSIONS = frozenset({SCHEMA_VERSION, EXTERNAL_SCHEMA_VERSION})
+KMEANS_SCHEMA_VERSION = 3
+SUPPORTED_SCHEMA_VERSIONS = frozenset(
+    {SCHEMA_VERSION, EXTERNAL_SCHEMA_VERSION, KMEANS_SCHEMA_VERSION}
+)
 
-RunStatus = Literal["created", "running", "completed", "failed"]
-StopReason = Literal["max_steps", "numerical_error", "io_error", "user_cancelled", "runtime_error"]
+RunStatus = Literal[
+    "created", "running", "cancelling", "completed", "cancelled", "interrupted", "failed"
+]
+StopReason = Literal[
+    "max_steps",
+    "numerical_error",
+    "io_error",
+    "user_cancelled",
+    "runtime_error",
+    "forced_termination",
+    "worker_lost",
+    "service_restart",
+    "service_shutdown",
+]
 
 
 def _camel(name: str) -> str:
@@ -144,6 +159,93 @@ class Event(BaseModel):
     schema_version: int = SCHEMA_VERSION
     run_id: str
     seq: int
-    kind: Literal["run.created", "run.started", "step.recorded", "run.completed", "run.failed"]
+    kind: Literal[
+        "run.created",
+        "run.started",
+        "run.cancelling",
+        "step.recorded",
+        "run.completed",
+        "run.cancelled",
+        "run.interrupted",
+        "run.failed",
+    ]
     step: int | None = None
+    message: str | None = None
+
+
+class KMeansDataConfig(BaseModel):
+    model_config = ConfigDict(frozen=True, populate_by_name=True, alias_generator=_camel)
+
+    generator: Literal["synthetic_kmeans_v1"]
+    blob_centers: list[list[float]]
+    blob_sizes: list[int]
+    cluster_std: float
+    seed: int
+
+
+class KMeansConfig(BaseModel):
+    model_config = ConfigDict(frozen=True, populate_by_name=True, alias_generator=_camel)
+
+    algorithm: Literal["kmeans_lloyd"]
+    n_clusters: int
+    init_seed: int
+    max_iterations: int
+
+
+class KMeansDatasetSummary(BaseModel):
+    model_config = ConfigDict(frozen=True, populate_by_name=True, alias_generator=_camel)
+
+    generator_id: Literal["synthetic_kmeans_v1"]
+    sample_ids: list[str]
+    points: list[list[float]]
+
+
+class KMeansRunManifest(BaseModel):
+    model_config = ConfigDict(frozen=True, populate_by_name=True, alias_generator=_camel)
+
+    schema_version: Literal[3] = 3
+    run_id: str
+    experiment_id: str
+    created_at: str
+    status: Literal["created", "running", "completed", "failed"]
+    stop_reason: Literal["assignments_stable", "max_iterations", "runtime_error"] | None = None
+    last_valid_step: int | None = None
+    error_message: str | None = None
+    data_config: KMeansDataConfig
+    dataset: KMeansDatasetSummary
+    training_config: KMeansConfig
+    code_provenance: CodeProvenance
+    observed_sample_ids: list[str]
+    n_snapshots_written: int = 0
+
+
+class KMeansSnapshot(BaseModel):
+    model_config = ConfigDict(frozen=True, populate_by_name=True, alias_generator=_camel)
+
+    step: int
+    iteration: int
+    phase: Literal["assignment", "update"]
+    centers: list[list[float]]
+    assignments: list[int]
+    inertia: float
+    empty_clusters: list[int]
+
+
+class KMeansEvent(BaseModel):
+    model_config = ConfigDict(frozen=True, populate_by_name=True, alias_generator=_camel)
+
+    schema_version: Literal[3] = 3
+    run_id: str
+    seq: int
+    kind: Literal[
+        "run.created",
+        "run.started",
+        "iteration.assigned",
+        "iteration.updated",
+        "cluster.empty",
+        "run.completed",
+        "run.failed",
+    ]
+    step: int | None = None
+    iteration: int | None = None
     message: str | None = None

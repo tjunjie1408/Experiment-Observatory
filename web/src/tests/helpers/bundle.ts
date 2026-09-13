@@ -1,4 +1,9 @@
-import type { ExternalDataConfig, RunBundle, Snapshot } from "../../lib/schema";
+import type {
+  ExternalDataConfig,
+  KMeansRunBundle,
+  LinearRunBundle,
+  Snapshot,
+} from "../../lib/schema";
 
 interface BundleOptions {
   runId?: string;
@@ -9,7 +14,69 @@ interface BundleOptions {
   learningRate?: number;
 }
 
-export function makeBundle(options: BundleOptions = {}): RunBundle {
+export function makeKMeansBundle(): KMeansRunBundle {
+  return {
+    manifest: {
+      schemaVersion: 3,
+      runId: "kmeans-test",
+      experimentId: "kmeans-study-seed-0",
+      createdAt: "2026-09-13T00:00:00Z",
+      status: "completed",
+      stopReason: "assignments_stable",
+      lastValidStep: 0,
+      errorMessage: null,
+      dataConfig: {
+        generator: "synthetic_kmeans_v1",
+        blobCenters: [[0, 0], [10, 10]],
+        blobSizes: [2, 2],
+        clusterStd: 0,
+        seed: 2026,
+      },
+      dataset: {
+        generatorId: "synthetic_kmeans_v1",
+        sampleIds: ["p0", "p1", "p2", "p3"],
+        points: [[0, 0], [0, 2], [10, 10], [10, 12]],
+      },
+      trainingConfig: {
+        algorithm: "kmeans_lloyd",
+        nClusters: 2,
+        initSeed: 0,
+        maxIterations: 10,
+      },
+      codeProvenance: {
+        gitCommit: null,
+        gitDirty: null,
+        unavailableReason: "test fixture",
+      },
+      observedSampleIds: ["p0"],
+      nSnapshotsWritten: 1,
+    },
+    events: [
+      {
+        schemaVersion: 3,
+        runId: "kmeans-test",
+        seq: 1,
+        kind: "run.created",
+        step: null,
+        iteration: null,
+        message: null,
+      },
+    ],
+    snapshots: [
+      {
+        step: 0,
+        iteration: 0,
+        phase: "assignment",
+        centers: [[0, 1], [10, 11]],
+        assignments: [0, 0, 1, 1],
+        inertia: 4,
+        emptyClusters: [],
+      },
+    ],
+  };
+}
+
+export function makeBundle(options: BundleOptions = {}): LinearRunBundle {
   const snapshotCount = options.snapshotCount ?? 3;
   const snapshots: Snapshot[] = Array.from(
     { length: snapshotCount },
@@ -71,7 +138,7 @@ export function makeBundle(options: BundleOptions = {}): RunBundle {
 export function makeExternalBundle(
   dataConfigOverrides: Partial<ExternalDataConfig> = {},
   options: BundleOptions = {},
-): RunBundle {
+): LinearRunBundle {
   const bundle = makeBundle(options);
   bundle.manifest.schemaVersion = 2;
   bundle.manifest.dataConfig = {

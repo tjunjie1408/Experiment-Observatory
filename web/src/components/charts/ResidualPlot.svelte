@@ -11,11 +11,11 @@
   import {
     featureLabel,
     isExternalDataConfig,
-    type RunBundle,
+    type LinearRunBundle,
     type Snapshot,
   } from "../../lib/schema";
 
-  export let bundle: RunBundle;
+  export let bundle: LinearRunBundle;
   export let snapshot: Snapshot;
 
   $: dataset = bundle.manifest.dataset;

@@ -1,0 +1,12 @@
+experiment_id: kmeans-init-study
+blob_centers:
+  - [-4.0, -2.0]
+  - [-4.0, 2.0]
+  - [4.0, -2.0]
+  - [4.0, 2.0]
+blob_sizes: [20, 20, 20, 10]
+cluster_std: 0.55
+data_seed: 2026
+n_clusters: 3
+init_seeds: [0, 1, 2, 3, 4]
+max_iterations: 20

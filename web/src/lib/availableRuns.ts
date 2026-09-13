@@ -14,7 +14,7 @@ export interface AvailableRun {
   id: string;
   label: string;
   path: string;
-  comparisonGroup: "synthetic-learning-rate" | "auto-mpg-weight";
+  comparisonGroup: "synthetic-learning-rate" | "auto-mpg-weight" | "kmeans-initialization";
 }
 
 export const AVAILABLE_RUNS: AvailableRun[] = [

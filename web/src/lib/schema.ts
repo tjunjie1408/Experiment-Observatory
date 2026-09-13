@@ -13,16 +13,27 @@
  */
 
 export const SCHEMA_VERSION = 1;
-export const SUPPORTED_SCHEMA_VERSIONS = [1, 2] as const;
+export const SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3] as const;
 export type SchemaVersion = (typeof SUPPORTED_SCHEMA_VERSIONS)[number];
 
-export type RunStatus = "created" | "running" | "completed" | "failed";
+export type RunStatus =
+  | "created"
+  | "running"
+  | "cancelling"
+  | "completed"
+  | "cancelled"
+  | "interrupted"
+  | "failed";
 export type StopReason =
   | "max_steps"
   | "numerical_error"
   | "io_error"
   | "user_cancelled"
-  | "runtime_error";
+  | "runtime_error"
+  | "forced_termination"
+  | "worker_lost"
+  | "service_restart"
+  | "service_shutdown";
 
 export interface SyntheticDataConfig {
   generator: string;
@@ -118,11 +129,79 @@ export interface Snapshot {
   observedPredictions: Record<string, number>;
 }
 
+export interface KMeansDataConfig {
+  generator: "synthetic_kmeans_v1";
+  blobCenters: [number, number][];
+  blobSizes: number[];
+  clusterStd: number;
+  seed: number;
+}
+
+export interface KMeansConfig {
+  algorithm: "kmeans_lloyd";
+  nClusters: number;
+  initSeed: number;
+  maxIterations: number;
+}
+
+export interface KMeansDatasetSummary {
+  generatorId: "synthetic_kmeans_v1";
+  sampleIds: string[];
+  points: [number, number][];
+}
+
+export interface KMeansRunManifest {
+  schemaVersion: 3;
+  runId: string;
+  experimentId: string;
+  createdAt: string;
+  status: "completed";
+  stopReason: "assignments_stable" | "max_iterations";
+  lastValidStep: number;
+  errorMessage: string | null;
+  dataConfig: KMeansDataConfig;
+  dataset: KMeansDatasetSummary;
+  trainingConfig: KMeansConfig;
+  codeProvenance: CodeProvenance;
+  observedSampleIds: string[];
+  nSnapshotsWritten: number;
+}
+
+export interface KMeansSnapshot {
+  step: number;
+  iteration: number;
+  phase: "assignment" | "update";
+  centers: [number, number][];
+  assignments: number[];
+  inertia: number;
+  emptyClusters: number[];
+}
+
+export interface KMeansEvent {
+  schemaVersion: 3;
+  runId: string;
+  seq: number;
+  kind:
+    | "run.created"
+    | "run.started"
+    | "iteration.assigned"
+    | "iteration.updated"
+    | "cluster.empty"
+    | "run.completed"
+    | "run.failed";
+  step: number | null;
+  iteration: number | null;
+  message: string | null;
+}
+
 export type EventKind =
   | "run.created"
   | "run.started"
+  | "run.cancelling"
   | "step.recorded"
   | "run.completed"
+  | "run.cancelled"
+  | "run.interrupted"
   | "run.failed";
 
 export interface RunEvent {
@@ -134,10 +213,22 @@ export interface RunEvent {
   message: string | null;
 }
 
-export interface RunBundle {
+export interface LinearRunBundle {
   manifest: RunManifest;
   events: RunEvent[];
   snapshots: Snapshot[];
+}
+
+export interface KMeansRunBundle {
+  manifest: KMeansRunManifest;
+  events: KMeansEvent[];
+  snapshots: KMeansSnapshot[];
+}
+
+export type RunBundle = LinearRunBundle | KMeansRunBundle;
+
+export function isKMeansBundle(bundle: RunBundle): bundle is KMeansRunBundle {
+  return bundle.manifest.schemaVersion === 3;
 }
 
 /** Raised for any validation failure; `reason` is a human-readable, specific message. */
@@ -199,7 +290,7 @@ function assertSchemaVersion(value: unknown, path: string): SchemaVersion {
   const version = assertFiniteNumber(value, path);
   if (!SUPPORTED_SCHEMA_VERSIONS.includes(version as SchemaVersion)) {
     throw new BundleValidationError(
-      `unsupported schemaVersion ${version}; this viewer supports schema versions 1 and 2`,
+      `unsupported schemaVersion ${version}; this viewer supports schema versions 1, 2, and 3`,
     );
   }
   return version as SchemaVersion;
@@ -241,19 +332,34 @@ function assertObject(value: unknown, path: string): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-const RUN_STATUSES: RunStatus[] = ["created", "running", "completed", "failed"];
+const RUN_STATUSES: RunStatus[] = [
+  "created",
+  "running",
+  "cancelling",
+  "completed",
+  "cancelled",
+  "interrupted",
+  "failed",
+];
 const STOP_REASONS: StopReason[] = [
   "max_steps",
   "numerical_error",
   "io_error",
   "user_cancelled",
   "runtime_error",
+  "forced_termination",
+  "worker_lost",
+  "service_restart",
+  "service_shutdown",
 ];
 const EVENT_KINDS: EventKind[] = [
   "run.created",
   "run.started",
+  "run.cancelling",
   "step.recorded",
   "run.completed",
+  "run.cancelled",
+  "run.interrupted",
   "run.failed",
 ];
 
@@ -455,6 +561,9 @@ function parseManifest(raw: unknown): RunManifest {
     obj.schemaVersion,
     "manifest.schemaVersion",
   );
+  if (schemaVersion === 3) {
+    throw new BundleValidationError("schemaVersion 3 requires the K-means parser");
+  }
 
   const status = assertString(obj.status, "manifest.status");
   if (!RUN_STATUSES.includes(status as RunStatus)) {
@@ -590,11 +699,11 @@ function parseEvent(raw: unknown, index: number): RunEvent {
  * with a specific reason for any violation; never returns a partially-valid
  * bundle.
  */
-export function validateBundle(
+function validateLinearBundle(
   manifestRaw: unknown,
   eventsRaw: unknown[],
   snapshotsRaw: unknown[],
-): RunBundle {
+): LinearRunBundle {
   const manifest = parseManifest(manifestRaw);
   const snapshots = snapshotsRaw.map((raw, i) => parseSnapshot(raw, i));
   const events = eventsRaw.map((raw, i) => parseEvent(raw, i));
@@ -660,4 +769,213 @@ export function validateBundle(
   }
 
   return { manifest, events, snapshots };
+}
+
+function assertInteger(value: unknown, path: string): number {
+  const parsed = assertFiniteNumber(value, path);
+  if (!Number.isInteger(parsed)) {
+    throw new BundleValidationError(`expected integer at ${path}`);
+  }
+  return parsed;
+}
+
+function parsePoint(value: unknown, path: string): [number, number] {
+  const point = assertArray(value, path);
+  if (point.length !== 2) {
+    throw new BundleValidationError(`${path} must contain exactly two coordinates`);
+  }
+  return [
+    assertFiniteNumber(point[0], `${path}[0]`),
+    assertFiniteNumber(point[1], `${path}[1]`),
+  ];
+}
+
+function validateKMeansBundle(
+  manifestRaw: unknown,
+  eventsRaw: unknown[],
+  snapshotsRaw: unknown[],
+): KMeansRunBundle {
+  const obj = assertObject(manifestRaw, "manifest");
+  if (obj.schemaVersion !== 3) {
+    throw new BundleValidationError("K-means manifest must use schemaVersion 3");
+  }
+  if (obj.status !== "completed") {
+    throw new BundleValidationError(
+      `manifest.status is ${JSON.stringify(obj.status)}, not "completed"; only completed runs can be replayed`,
+    );
+  }
+  if (obj.stopReason !== "assignments_stable" && obj.stopReason !== "max_iterations") {
+    throw new BundleValidationError("manifest.stopReason is invalid for K-means");
+  }
+  const dataObj = assertObject(obj.dataConfig, "manifest.dataConfig");
+  const datasetObj = assertObject(obj.dataset, "manifest.dataset");
+  const trainingObj = assertObject(obj.trainingConfig, "manifest.trainingConfig");
+  const sampleIds = assertArray(datasetObj.sampleIds, "manifest.dataset.sampleIds").map(
+    (value, index) => assertString(value, `manifest.dataset.sampleIds[${index}]`),
+  );
+  const points = assertArray(datasetObj.points, "manifest.dataset.points").map(
+    (value, index) => parsePoint(value, `manifest.dataset.points[${index}]`),
+  );
+  if (points.length !== sampleIds.length || new Set(sampleIds).size !== sampleIds.length) {
+    throw new BundleValidationError("K-means sampleIds and points must align and be unique");
+  }
+  const nClusters = assertInteger(trainingObj.nClusters, "manifest.trainingConfig.nClusters");
+  const manifest: KMeansRunManifest = {
+    schemaVersion: 3,
+    runId: assertString(obj.runId, "manifest.runId"),
+    experimentId: assertString(obj.experimentId, "manifest.experimentId"),
+    createdAt: assertString(obj.createdAt, "manifest.createdAt"),
+    status: "completed",
+    stopReason: obj.stopReason,
+    lastValidStep: assertInteger(obj.lastValidStep, "manifest.lastValidStep"),
+    errorMessage: assertNullableString(obj.errorMessage ?? null, "manifest.errorMessage"),
+    dataConfig: {
+      generator: assertLiteral(
+        dataObj.generator,
+        "synthetic_kmeans_v1",
+        "manifest.dataConfig.generator",
+      ),
+      blobCenters: assertArray(dataObj.blobCenters, "manifest.dataConfig.blobCenters").map(
+        (value, index) => parsePoint(value, `manifest.dataConfig.blobCenters[${index}]`),
+      ),
+      blobSizes: assertArray(dataObj.blobSizes, "manifest.dataConfig.blobSizes").map(
+        (value, index) => assertInteger(value, `manifest.dataConfig.blobSizes[${index}]`),
+      ),
+      clusterStd: assertFiniteNumber(dataObj.clusterStd, "manifest.dataConfig.clusterStd"),
+      seed: assertInteger(dataObj.seed, "manifest.dataConfig.seed"),
+    },
+    dataset: {
+      generatorId: assertLiteral(
+        datasetObj.generatorId,
+        "synthetic_kmeans_v1",
+        "manifest.dataset.generatorId",
+      ),
+      sampleIds,
+      points,
+    },
+    trainingConfig: {
+      algorithm: assertLiteral(
+        trainingObj.algorithm,
+        "kmeans_lloyd",
+        "manifest.trainingConfig.algorithm",
+      ),
+      nClusters,
+      initSeed: assertInteger(trainingObj.initSeed, "manifest.trainingConfig.initSeed"),
+      maxIterations: assertInteger(
+        trainingObj.maxIterations,
+        "manifest.trainingConfig.maxIterations",
+      ),
+    },
+    codeProvenance: parseCodeProvenance(obj.codeProvenance, "manifest.codeProvenance"),
+    observedSampleIds: assertArray(
+      obj.observedSampleIds,
+      "manifest.observedSampleIds",
+    ).map((value, index) =>
+      assertString(value, `manifest.observedSampleIds[${index}]`),
+    ),
+    nSnapshotsWritten: assertInteger(
+      obj.nSnapshotsWritten,
+      "manifest.nSnapshotsWritten",
+    ),
+  };
+
+  const snapshots: KMeansSnapshot[] = snapshotsRaw.map((raw, index) => {
+    const path = `snapshots[${index}]`;
+    const snapshot = assertObject(raw, path);
+    const phase = assertString(snapshot.phase, `${path}.phase`);
+    if (phase !== "assignment" && phase !== "update") {
+      throw new BundleValidationError(`${path}.phase is invalid`);
+    }
+    const centers = assertArray(snapshot.centers, `${path}.centers`).map((value, center) =>
+      parsePoint(value, `${path}.centers[${center}]`),
+    );
+    const assignments = assertArray(snapshot.assignments, `${path}.assignments`).map(
+      (value, sample) => assertInteger(value, `${path}.assignments[${sample}]`),
+    );
+    if (centers.length !== nClusters || assignments.length !== points.length) {
+      throw new BundleValidationError(`${path} has inconsistent K-means shapes`);
+    }
+    const inertia = assertFiniteNumber(snapshot.inertia, `${path}.inertia`);
+    let reconstructed = 0;
+    assignments.forEach((cluster, sample) => {
+      if (cluster < 0 || cluster >= nClusters) {
+        throw new BundleValidationError(`${path}.assignments[${sample}] is out of range`);
+      }
+      const point = points[sample];
+      const center = centers[cluster];
+      if (!point || !center) throw new BundleValidationError(`${path} has missing geometry`);
+      reconstructed += point.reduce(
+        (sum, coordinate, axis) => sum + (coordinate - center[axis]!) ** 2,
+        0,
+      );
+    });
+    if (Math.abs(inertia - reconstructed) > 1e-9 * Math.max(1, reconstructed)) {
+      throw new BundleValidationError(`${path}.inertia does not match points and centers`);
+    }
+    return {
+      step: assertInteger(snapshot.step, `${path}.step`),
+      iteration: assertInteger(snapshot.iteration, `${path}.iteration`),
+      phase,
+      centers,
+      assignments,
+      inertia,
+      emptyClusters: assertArray(snapshot.emptyClusters, `${path}.emptyClusters`).map(
+        (value, emptyIndex) =>
+          assertInteger(value, `${path}.emptyClusters[${emptyIndex}]`),
+      ),
+    };
+  });
+  if (
+    manifest.nSnapshotsWritten !== snapshots.length ||
+    snapshots.some((snapshot, index) => snapshot.step !== index)
+  ) {
+    throw new BundleValidationError("K-means snapshot count or contiguous steps are invalid");
+  }
+
+  const allowedKinds = new Set([
+    "run.created",
+    "run.started",
+    "iteration.assigned",
+    "iteration.updated",
+    "cluster.empty",
+    "run.completed",
+    "run.failed",
+  ]);
+  const events: KMeansEvent[] = eventsRaw.map((raw, index) => {
+    const path = `events[${index}]`;
+    const event = assertObject(raw, path);
+    const kind = assertString(event.kind, `${path}.kind`);
+    if (!allowedKinds.has(kind)) throw new BundleValidationError(`${path}.kind is invalid`);
+    if (event.runId !== manifest.runId || event.schemaVersion !== 3) {
+      throw new BundleValidationError(`${path} does not belong to this schema-v3 run`);
+    }
+    return {
+      schemaVersion: 3,
+      runId: manifest.runId,
+      seq: assertInteger(event.seq, `${path}.seq`),
+      kind: kind as KMeansEvent["kind"],
+      step:
+        event.step == null ? null : assertInteger(event.step, `${path}.step`),
+      iteration:
+        event.iteration == null
+          ? null
+          : assertInteger(event.iteration, `${path}.iteration`),
+      message: assertNullableString(event.message ?? null, `${path}.message`),
+    };
+  });
+  if (events.some((event, index) => event.seq !== index + 1)) {
+    throw new BundleValidationError("K-means event seq values must be contiguous from one");
+  }
+  return { manifest, events, snapshots };
+}
+
+export function validateBundle(
+  manifestRaw: unknown,
+  eventsRaw: unknown[],
+  snapshotsRaw: unknown[],
+): RunBundle {
+  const manifest = assertObject(manifestRaw, "manifest");
+  return manifest.schemaVersion === 3
+    ? validateKMeansBundle(manifestRaw, eventsRaw, snapshotsRaw)
+    : validateLinearBundle(manifestRaw, eventsRaw, snapshotsRaw);
 }

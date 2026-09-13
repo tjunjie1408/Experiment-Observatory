@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getComparisonNotice } from "../lib/comparison";
-import { makeBundle, makeExternalBundle } from "./helpers/bundle";
+import { makeBundle, makeExternalBundle, makeKMeansBundle } from "./helpers/bundle";
 
 describe("getComparisonNotice", () => {
   it("returns no notice when comparison is disabled", () => {
@@ -57,6 +57,14 @@ describe("getComparisonNotice", () => {
     expect(getComparisonNotice(makeBundle(), makeExternalBundle())?.kind).toBe(
       "incompatible",
     );
+  });
+
+  it("rejects K-means comparison when K differs", () => {
+    const runA = makeKMeansBundle();
+    const runB = makeKMeansBundle();
+    runB.manifest.trainingConfig.nClusters = 3;
+
+    expect(getComparisonNotice(runA, runB)?.kind).toBe("incompatible");
   });
 
   it("describes unequal step budgets without interpolation or extrapolation", () => {

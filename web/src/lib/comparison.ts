@@ -1,5 +1,6 @@
 import {
   isExternalDataConfig,
+  isKMeansBundle,
   type DataConfig,
   type RunBundle,
 } from "./schema";
@@ -54,6 +55,44 @@ export function getComparisonNotice(
       kind: "waiting",
       message: "Run A has not finished loading; comparison is unavailable.",
     };
+  }
+
+  const kmeansA = isKMeansBundle(bundleA);
+  const kmeansB = isKMeansBundle(bundleB);
+  if (kmeansA !== kmeansB) {
+    return {
+      kind: "incompatible",
+      message: "Different model families are shown side by side; their metrics are not aligned.",
+    };
+  }
+  if (isKMeansBundle(bundleA) && isKMeansBundle(bundleB)) {
+    const sameData =
+      JSON.stringify(bundleA.manifest.dataConfig) ===
+      JSON.stringify(bundleB.manifest.dataConfig);
+    if (!sameData) {
+      return {
+        kind: "incompatible",
+        message: "These K-means runs use different datasets and are not directly comparable.",
+      };
+    }
+    if (
+      bundleA.manifest.trainingConfig.nClusters !==
+      bundleB.manifest.trainingConfig.nClusters
+    ) {
+      return {
+        kind: "incompatible",
+        message: "These K-means runs use different K values and are not directly comparable.",
+      };
+    }
+    const finalA = bundleA.snapshots.at(-1)?.inertia;
+    const finalB = bundleB.snapshots.at(-1)?.inertia;
+    return {
+      kind: "compatible",
+      message: `Same data and K. Initialization seeds: A=${bundleA.manifest.trainingConfig.initSeed}, B=${bundleB.manifest.trainingConfig.initSeed}. Final inertia: A=${finalA?.toFixed(4)}, B=${finalB?.toFixed(4)}. Cluster labels are arbitrary.`,
+    };
+  }
+  if (isKMeansBundle(bundleA) || isKMeansBundle(bundleB)) {
+    return { kind: "incompatible", message: "Model families cannot be aligned." };
   }
 
   const dataA = bundleA.manifest.dataConfig;
