@@ -19,6 +19,15 @@ _REPLACE_RETRY_DELAY_S = 0.05
 class RunIOError(Exception):
     """Raised when run artifact I/O fails; wraps the underlying OSError."""
 
+_PROVENANCE_PATHS: tuple[str, ...] = (
+    "src",
+    "configs",
+    "datasets",
+    "pyproject.toml",
+    "uv.lock",
+    "dvc.lock",
+)
+
 
 def new_run_id(experiment_id: str) -> str:
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%f")
@@ -67,7 +76,7 @@ def get_code_provenance(repo_root: Path) -> CodeProvenance:
             text=True,
         ).strip()
         dirty_output = subprocess.check_output(
-            ["git", "status", "--porcelain"],
+            ["git", "status", "--porcelain", "--", *_PROVENANCE_PATHS],
             cwd=repo_root,
             stderr=subprocess.DEVNULL,
             text=True,
