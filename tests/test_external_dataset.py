@@ -11,8 +11,12 @@ import pytest
 import yaml
 
 from observatory.cli import build_parser, run_dataset, train_dataset
-from observatory.data.auto_mpg import load_auto_mpg, prepare_auto_mpg, standardize_weight
-from observatory.models.linear_regression import fit, mse, predict
+from observatory.datasets.tabular.auto_mpg import (
+    load_auto_mpg,
+    prepare_auto_mpg,
+    standardize_weight,
+)
+from observatory.models.linear_regression.gradient_descent import fit, mse, predict
 from observatory.runtime.export import ExportError, export_run
 
 REPO_ROOT = Path(__file__).resolve().parents[1]

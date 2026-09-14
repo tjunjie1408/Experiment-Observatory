@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from observatory.data.synthetic import SyntheticLinearConfig
+from observatory.datasets.synthetic.linear import SyntheticLinearConfig
+from observatory.experiments.linear_regression.record import create_run, run_training
 from observatory.runtime.export import ExportError, export_run, validate_run_for_export
-from observatory.runtime.record import create_run, run_training
 from observatory.runtime.schema import ModelConfig
 
 

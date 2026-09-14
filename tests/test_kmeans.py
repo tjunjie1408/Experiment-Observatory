@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from sklearn.cluster import KMeans
 
-from observatory.models.kmeans import assign, inertia, iter_lloyd, update_centers
+from observatory.models.kmeans.lloyd import assign, inertia, iter_lloyd, update_centers
 
 
 def test_assignment_uses_nearest_center_and_lowest_index_for_ties() -> None:

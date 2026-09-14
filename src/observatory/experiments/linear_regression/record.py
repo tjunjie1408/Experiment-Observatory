@@ -1,4 +1,4 @@
-"""Run lifecycle and recording layer.
+"""Linear-regression run lifecycle and recording layer.
 
 - Each run gets its own runId directory under a runs root; two runs from the
   same config never share or overwrite files.
@@ -16,10 +16,7 @@ from __future__ import annotations
 
 import contextlib
 import json
-import os
-import secrets
 import signal
-import subprocess
 import time
 import types
 from collections.abc import Iterator, Sequence
@@ -32,12 +29,11 @@ from typing import Protocol
 import numpy as np
 import numpy.typing as npt
 
-from observatory.data.synthetic import SyntheticLinearConfig, generate
-from observatory.models.linear_regression import iter_fit
+from observatory.datasets.synthetic.linear import SyntheticLinearConfig, generate
+from observatory.models.linear_regression.gradient_descent import iter_fit
 from observatory.runtime.schema import (
     EXTERNAL_SCHEMA_VERSION,
     SCHEMA_VERSION,
-    CodeProvenance,
     DataConfig,
     DatasetSummary,
     Event,
@@ -47,14 +43,17 @@ from observatory.runtime.schema import (
     RunManifest,
     Snapshot,
 )
+from observatory.runtime.storage import (
+    RunIOError,
+    append_jsonl,
+    atomic_write_json,
+    get_code_provenance,
+    new_run_id,
+)
 
 
 class CancelledError(Exception):
     """Raised internally when SIGINT is observed at a safe step boundary."""
-
-
-class RunIOError(Exception):
-    """Raised when a write to the run directory fails; wraps the OSError cause."""
 
 
 _REPLACE_MAX_ATTEMPTS = 5
@@ -66,52 +65,6 @@ class RunResult:
     run_id: str
     run_dir: Path
     manifest: RunManifest
-
-
-def _new_run_id(experiment_id: str) -> str:
-    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%f")
-    token = secrets.token_hex(4)
-    return f"{experiment_id}-{stamp}-{token}"
-
-
-def _atomic_write_json(path: Path, payload: object) -> None:
-    """Write JSON to `path` via temp file + os.replace, so readers never see a partial file.
-
-    On Windows, os.replace() onto an existing destination can transiently
-    fail with WinError 5 (Access is denied) if another process (AV scanner,
-    search indexer) briefly holds an open handle to the destination file
-    without FILE_SHARE_DELETE. This is not a real permission problem and
-    normally clears within milliseconds, so a short bounded retry is used
-    before treating it as a genuine write failure.
-    """
-    tmp_path = path.with_suffix(path.suffix + f".tmp{secrets.token_hex(4)}")
-    try:
-        tmp_path.write_text(json.dumps(payload, indent=2, allow_nan=False), encoding="utf-8")
-        last_exc: OSError | None = None
-        for attempt in range(_REPLACE_MAX_ATTEMPTS):
-            try:
-                tmp_path.replace(path)
-                return
-            except OSError as exc:
-                last_exc = exc
-                if attempt < _REPLACE_MAX_ATTEMPTS - 1:
-                    time.sleep(_REPLACE_RETRY_DELAY_S)
-        assert last_exc is not None
-        raise last_exc
-    except OSError as exc:
-        tmp_path.unlink(missing_ok=True)
-        raise RunIOError(f"failed to write {path}: {exc}") from exc
-
-
-def _append_jsonl(path: Path, line_payload: object) -> None:
-    try:
-        with path.open("a", encoding="utf-8") as fh:
-            fh.write(json.dumps(line_payload, allow_nan=False))
-            fh.write("\n")
-            fh.flush()
-            os.fsync(fh.fileno())
-    except OSError as exc:
-        raise RunIOError(f"failed to append to {path}: {exc}") from exc
 
 
 def load_run_manifest(run_dir: Path) -> RunManifest:
@@ -167,10 +120,10 @@ def interrupt_orphaned_run(run_dir: Path) -> RunManifest:
             "error_message": "service restarted without an owning worker",
         }
     )
-    _atomic_write_json(
+    atomic_write_json(
         run_dir / "manifest.json", json.loads(interrupted.model_dump_json(by_alias=True))
     )
-    _append_jsonl(
+    append_jsonl(
         run_dir / "events.jsonl",
         json.loads(
             Event(
@@ -183,25 +136,6 @@ def interrupt_orphaned_run(run_dir: Path) -> RunManifest:
         ),
     )
     return interrupted
-
-
-def _get_code_provenance(repo_root: Path) -> CodeProvenance:
-    try:
-        commit = subprocess.check_output(
-            ["git", "rev-parse", "HEAD"],
-            cwd=repo_root,
-            stderr=subprocess.DEVNULL,
-            text=True,
-        ).strip()
-        dirty_output = subprocess.check_output(
-            ["git", "status", "--porcelain"],
-            cwd=repo_root,
-            stderr=subprocess.DEVNULL,
-            text=True,
-        )
-        return CodeProvenance(git_commit=commit, git_dirty=bool(dirty_output.strip()))
-    except (OSError, subprocess.CalledProcessError):
-        return CodeProvenance(unavailable_reason="git metadata unavailable in this environment")
 
 
 class LinearDataset(Protocol):
@@ -245,14 +179,14 @@ class RunRecorder:
 
     def _write_manifest(self, manifest: RunManifest) -> None:
         self.manifest = manifest
-        _atomic_write_json(self.manifest_path, json.loads(manifest.model_dump_json(by_alias=True)))
+        atomic_write_json(self.manifest_path, json.loads(manifest.model_dump_json(by_alias=True)))
 
     def _write_event(self, event: Event) -> None:
-        _append_jsonl(self.events_path, json.loads(event.model_dump_json(by_alias=True)))
+        append_jsonl(self.events_path, json.loads(event.model_dump_json(by_alias=True)))
 
     def _write_snapshots(self) -> None:
         payload = [json.loads(s.model_dump_json(by_alias=True)) for s in self._snapshots]
-        _atomic_write_json(self.snapshots_path, payload)
+        atomic_write_json(self.snapshots_path, payload)
 
     def record_created(self) -> None:
         self._write_manifest(self.manifest)
@@ -431,7 +365,7 @@ def _create_run_recorder(
     if not np.isfinite(dataset.x).all() or not np.isfinite(dataset.y).all():
         raise ValueError("x and y must contain only finite values")
 
-    run_id = _new_run_id(experiment_id)
+    run_id = new_run_id(experiment_id)
     run_dir = runs_root / run_id
     run_dir.mkdir(parents=True, exist_ok=False)
 
@@ -461,7 +395,7 @@ def _create_run_recorder(
             )
         ),
         training_config=model_cfg,
-        code_provenance=_get_code_provenance(repo_root),
+        code_provenance=get_code_provenance(repo_root),
         observed_sample_ids=observed_sample_ids,
     )
     recorder = RunRecorder(run_dir, manifest, dataset)

@@ -9,7 +9,12 @@ from collections.abc import Callable
 import numpy as np
 import pytest
 
-from observatory.models.linear_regression import fit, gradient, least_squares_reference, mse
+from observatory.models.linear_regression.gradient_descent import (
+    fit,
+    gradient,
+    least_squares_reference,
+    mse,
+)
 
 X = np.array([-1.0, 0.0, 1.0])
 Y = np.array([-1.0, 1.0, 3.0])

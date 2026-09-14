@@ -12,8 +12,8 @@ from fastapi.testclient import TestClient
 
 from observatory.api.app import create_app
 from observatory.api.service import RunService
-from observatory.data.synthetic import SyntheticLinearConfig
-from observatory.runtime.record import create_run
+from observatory.datasets.synthetic.linear import SyntheticLinearConfig
+from observatory.experiments.linear_regression.record import create_run
 from observatory.runtime.schema import ModelConfig
 
 VALID_REQUEST = {

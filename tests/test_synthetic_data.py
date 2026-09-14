@@ -3,7 +3,11 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from observatory.data.synthetic import GENERATOR_ID, SyntheticLinearConfig, generate
+from observatory.datasets.synthetic.linear import (
+    GENERATOR_ID,
+    SyntheticLinearConfig,
+    generate,
+)
 
 
 def make_config(**overrides: float | int) -> SyntheticLinearConfig:

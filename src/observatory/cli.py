@@ -25,19 +25,28 @@ from typing import Any
 
 import yaml
 
-from observatory.data.auto_mpg import (
+from observatory.datasets.synthetic.linear import SyntheticLinearConfig
+from observatory.datasets.tabular.auto_mpg import (
     AutoMpgDataset,
     PreparedAutoMpgDataset,
     load_auto_mpg,
     prepare_auto_mpg,
     standardize_weight,
 )
-from observatory.data.synthetic import SyntheticLinearConfig
-from observatory.kmeans_study import run_kmeans_study
-from observatory.models.linear_regression import fit, least_squares_reference, mse
+from observatory.experiments.kmeans.study import run_kmeans_study
+from observatory.experiments.linear_regression.record import (
+    create_external_run,
+    create_run,
+    run_training,
+)
+from observatory.models.linear_regression.gradient_descent import (
+    fit,
+    least_squares_reference,
+    mse,
+)
 from observatory.runtime.export import ExportError, export_run
-from observatory.runtime.record import RunIOError, create_external_run, create_run, run_training
 from observatory.runtime.schema import ExternalDataConfig, ModelConfig, RunManifest
+from observatory.runtime.storage import RunIOError
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_RUNS_ROOT = REPO_ROOT / "runs"

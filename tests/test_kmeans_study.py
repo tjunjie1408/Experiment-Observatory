@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from observatory.cli import build_parser
-from observatory.kmeans_study import load_kmeans_study_config, run_kmeans_study
+from observatory.experiments.kmeans.study import load_kmeans_study_config, run_kmeans_study
 
 
 def test_study_generates_five_completed_runs_from_same_dataset(tmp_path: Path) -> None:

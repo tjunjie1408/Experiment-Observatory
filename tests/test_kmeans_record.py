@@ -5,9 +5,9 @@ from pathlib import Path
 
 import numpy as np
 
-from observatory.data.kmeans_synthetic import KMeansSyntheticConfig
+from observatory.datasets.synthetic.blobs import KMeansSyntheticConfig
+from observatory.experiments.kmeans.record import run_kmeans_experiment
 from observatory.runtime.export import export_run
-from observatory.runtime.kmeans_record import run_kmeans_experiment
 from observatory.runtime.schema import KMeansRunManifest, KMeansSnapshot
 
 

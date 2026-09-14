@@ -17,15 +17,15 @@ import numpy as np
 from pydantic import ValidationError
 
 from observatory.api.models import RunRequest
-from observatory.data.synthetic import SyntheticLinearConfig
-from observatory.models.linear_regression import iter_fit
-from observatory.runtime.record import (
+from observatory.datasets.synthetic.linear import SyntheticLinearConfig
+from observatory.experiments.linear_regression.record import (
     RunRecorder,
     create_run,
     interrupt_orphaned_run,
     load_run_events,
     load_run_manifest,
 )
+from observatory.models.linear_regression.gradient_descent import iter_fit
 from observatory.runtime.schema import RunManifest, Snapshot
 
 TERMINAL_STATUSES = frozenset({"completed", "cancelled", "interrupted", "failed"})

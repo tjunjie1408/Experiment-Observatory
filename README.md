@@ -15,9 +15,16 @@ A continuously growing, runnable, inspectable, reproducible machine learning lea
 docs/                 project plans, acceptance evidence, model notes
 datasets/auto-mpg/    immutable source, processed data, and version manifests
 src/observatory/
-  data/               synthetic and UCI Auto MPG data preparation
-  models/             NumPy linear regression and handwritten Lloyd K-means
-  runtime/            run lifecycle, recording, schema, and static export
+  datasets/           reusable synthetic and tabular data sources
+    synthetic/        linear samples and two-dimensional blobs
+    tabular/          verified external dataset loaders such as Auto MPG
+  models/             model families, separated from datasets and orchestration
+    linear_regression/ gradient-descent implementation
+    kmeans/            handwritten Lloyd implementation
+  experiments/        model-specific recording and study orchestration
+    linear_regression/ linear run lifecycle and recording
+    kmeans/            K-means recording and initialization study
+  runtime/            cross-model schema, storage, and static export
   api/                local FastAPI service, worker coordinator, and request models
   cli.py              run, export, prepare-dataset, and dataset commands
 tests/                numerical, contract, data, and run tests

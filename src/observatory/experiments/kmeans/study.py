@@ -7,8 +7,8 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel, ConfigDict, Field
 
-from observatory.data.kmeans_synthetic import KMeansSyntheticConfig
-from observatory.runtime.kmeans_record import run_kmeans_experiment
+from observatory.datasets.synthetic.blobs import KMeansSyntheticConfig
+from observatory.experiments.kmeans.record import run_kmeans_experiment
 from observatory.runtime.schema import KMeansRunManifest
 
 

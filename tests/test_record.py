@@ -8,10 +8,11 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from observatory.data.synthetic import SyntheticLinearConfig
-from observatory.models.linear_regression import mse, predict
-from observatory.runtime.record import RunIOError, create_run, run_training
+from observatory.datasets.synthetic.linear import SyntheticLinearConfig
+from observatory.experiments.linear_regression.record import create_run, run_training
+from observatory.models.linear_regression.gradient_descent import mse, predict
 from observatory.runtime.schema import ModelConfig
+from observatory.runtime.storage import RunIOError
 
 
 def make_configs(
