@@ -1,8 +1,8 @@
 {
   "schemaVersion": 3,
-  "runId": "kmeans-init-study-seed-1-20260913T112924342681-91eb76fb",
+  "runId": "kmeans-init-study-seed-1-20260914T125732560908-82ce95f4",
   "experimentId": "kmeans-init-study-seed-1",
-  "createdAt": "2026-09-13T11:29:24.342681+00:00",
+  "createdAt": "2026-09-14T12:57:32.560908+00:00",
   "status": "completed",
   "stopReason": "assignments_stable",
   "lastValidStep": 6,
@@ -400,8 +400,8 @@
     "maxIterations": 20
   },
   "codeProvenance": {
-    "gitCommit": "0d17dfc9f7a1ed44876290795ead63420f470691",
-    "gitDirty": true,
+    "gitCommit": "c3d652f400dc46797825d118ae3deb1a4006d7f6",
+    "gitDirty": false,
     "unavailableReason": null
   },
   "observedSampleIds": [
