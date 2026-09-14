@@ -42,4 +42,34 @@ export const AVAILABLE_RUNS: AvailableRun[] = [
     path: "/runs/auto-mpg",
     comparisonGroup: "auto-mpg-weight",
   },
+  {
+    id: "kmeans-seed-0",
+    label: "K-means init seed 0",
+    path: "/runs/kmeans-seed-0",
+    comparisonGroup: "kmeans-initialization",
+  },
+  {
+    id: "kmeans-seed-1",
+    label: "K-means init seed 1",
+    path: "/runs/kmeans-seed-1",
+    comparisonGroup: "kmeans-initialization",
+  },
+  {
+    id: "kmeans-seed-2",
+    label: "K-means init seed 2",
+    path: "/runs/kmeans-seed-2",
+    comparisonGroup: "kmeans-initialization",
+  },
+  {
+    id: "kmeans-seed-3",
+    label: "K-means init seed 3",
+    path: "/runs/kmeans-seed-3",
+    comparisonGroup: "kmeans-initialization",
+  },
+  {
+    id: "kmeans-seed-4",
+    label: "K-means init seed 4",
+    path: "/runs/kmeans-seed-4",
+    comparisonGroup: "kmeans-initialization",
+  },
 ];
