@@ -1,0 +1,19 @@
+dataset_id: uci-wdbc
+title: Breast Cancer Wisconsin (Diagnostic)
+category: tabular
+domain: health
+task: binary_classification
+feature_type: numeric
+source_kind: real_observations
+creators: [William H. Wolberg, W. Nick Street, Olvi L. Mangasarian]
+citation: >-
+  Wolberg, W., Mangasarian, O., Street, N., & Street, W. (1993).
+  Breast Cancer Wisconsin (Diagnostic) [Dataset]. UCI Machine Learning Repository.
+  https://doi.org/10.24432/C5DW2B.
+authoritative_page: https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic
+doi: 10.24432/C5DW2B
+license:
+  name: CC BY 4.0
+  url: https://creativecommons.org/licenses/by/4.0/
+versions: [1.0.0]
+intended_use: Educational model experiments; not a clinical diagnostic system.

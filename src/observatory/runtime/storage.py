@@ -19,12 +19,14 @@ _REPLACE_RETRY_DELAY_S = 0.05
 class RunIOError(Exception):
     """Raised when run artifact I/O fails; wraps the underlying OSError."""
 
+
 _PROVENANCE_PATHS: tuple[str, ...] = (
     "src",
     "configs",
     "datasets",
     "pyproject.toml",
     "uv.lock",
+    "dvc.yaml",
     "dvc.lock",
 )
 

@@ -14,6 +14,7 @@ A continuously growing, runnable, inspectable, reproducible machine learning lea
 ```text
 docs/                 project plans, acceptance evidence, model notes
 datasets/auto-mpg/    immutable source, processed data, and version manifests
+datasets/breast-cancer/ real WDBC source, canonical features and fixed split
 src/observatory/
   datasets/           reusable synthetic and tabular data sources
     synthetic/        linear samples and two-dimensional blobs
@@ -49,6 +50,7 @@ uv sync --locked
 ```bash
 uv run observatory run-all configs/linear/converge.yaml configs/linear/slow.yaml configs/linear/diverge.yaml
 uv run observatory train-dataset configs/linear/auto_mpg_weight.yaml
+uv run --locked observatory prepare-wdbc datasets/breast-cancer/versions/1.0.0.yaml datasets/breast-cancer/processed
 uv run observatory run-dataset configs/linear/auto_mpg_weight.yaml --runs-root runs
 uv run observatory run-kmeans-study configs/kmeans/initialization_study.yaml --runs-root runs
 uv run observatory export runs/<auto-mpg-run-id> <new-export-directory>
@@ -73,6 +75,11 @@ manifest, `POST /api/runs/{runId}/cancel` requests idempotent cancellation, and
 The shipped synthetic and Auto MPG bundles have clean Git provenance and are covered by the public-run contract test.
 
 ## DVC data recovery
+
+The [dataset catalog](datasets/README.md) describes dataset ownership and categories.
+The [WDBC pipeline](datasets/breast-cancer/README.md) prepares 569 real observations
+into 397 training and 172 validation rows. Its local data pipeline is implemented;
+tree training and WDBC remote publication are separate pending tasks.
 
 Auto MPG raw files and the processed training table are DVC-managed. Git stores the dataset/version manifests, `raw.dvc`, `dvc.yaml`, and `dvc.lock`; dataset bytes are pushed to the configured DVC remote.
 

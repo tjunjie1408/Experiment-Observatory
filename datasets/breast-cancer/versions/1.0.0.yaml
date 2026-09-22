@@ -1,0 +1,60 @@
+dataset_id: uci-wdbc
+version: 1.0.0
+source_url: https://archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin/wdbc.data
+description_url: https://archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin/wdbc.names
+retrieved_at: "2026-09-22"
+row_count: 569
+feature_names:
+  - radius_mean
+  - texture_mean
+  - perimeter_mean
+  - area_mean
+  - smoothness_mean
+  - compactness_mean
+  - concavity_mean
+  - concave_points_mean
+  - symmetry_mean
+  - fractal_dimension_mean
+  - radius_se
+  - texture_se
+  - perimeter_se
+  - area_se
+  - smoothness_se
+  - compactness_se
+  - concavity_se
+  - concave_points_se
+  - symmetry_se
+  - fractal_dimension_se
+  - radius_worst
+  - texture_worst
+  - perimeter_worst
+  - area_worst
+  - smoothness_worst
+  - compactness_worst
+  - concavity_worst
+  - concave_points_worst
+  - symmetry_worst
+  - fractal_dimension_worst
+target_mapping: {B: 0, M: 1}
+preprocessing: none
+split_strategy: stratified-sha256-2026-v1
+train_count: 397
+validation_count: 172
+serialization: utf8-lf-id-sorted-float17g-v1
+artifacts:
+  - path: raw/wdbc.data
+    role: raw_data
+    bytes: 124103
+    sha256: d606af411f3e5be8a317a5a8b652b425aaf0ff38ca683d5327ffff94c3695f4a
+  - path: raw/wdbc.names
+    role: source_description
+    bytes: 4708
+    sha256: 840e04e3f20f8a5b326892f3b9cbc01c4cd6f7e6c597630b701ef6c0ac79f5ef
+  - path: processed/wdbc.csv
+    role: processed
+    bytes: 286208
+    sha256: 47a1ad6a35ba66f3f92b5f3a52bb96d48d2aa49cc7c7ec35e0708806ba43a54f
+  - path: processed/split.csv
+    role: split
+    bytes: 11349
+    sha256: 0ef6330425ba5975465eabfd46565959ac859b694ac3f55598541a83cb41b3f1

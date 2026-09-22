@@ -33,6 +33,7 @@ from observatory.datasets.tabular.auto_mpg import (
     prepare_auto_mpg,
     standardize_weight,
 )
+from observatory.datasets.tabular.breast_cancer import prepare_breast_cancer
 from observatory.experiments.kmeans.study import run_kmeans_study
 from observatory.experiments.linear_regression.record import (
     create_external_run,
@@ -313,6 +314,16 @@ def run_one(config_path: Path, runs_root: Path) -> RunManifest:
     return run_training(recorder)
 
 
+def _cmd_prepare_wdbc(args: argparse.Namespace) -> int:
+    try:
+        hashes = prepare_breast_cancer(Path(args.version_manifest), Path(args.output_dir))
+    except ValueError as exc:
+        print(f"preparation rejected: {exc}", file=sys.stderr)
+        return 2
+    print(f"prepared WDBC: rows=569 train=397 validation=172 hashes={hashes}")
+    return 0
+
+
 def _cmd_prepare_dataset(args: argparse.Namespace) -> int:
     try:
         result = prepare_auto_mpg(Path(args.raw_data), Path(args.output))
@@ -413,6 +424,13 @@ def _cmd_run_kmeans_study(args: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="observatory")
     subparsers = parser.add_subparsers(dest="command", required=True)
+
+    wdbc_parser = subparsers.add_parser(
+        "prepare-wdbc", help="Prepare verified WDBC data and split."
+    )
+    wdbc_parser.add_argument("version_manifest", help="Path to the pinned WDBC version YAML.")
+    wdbc_parser.add_argument("output_dir", help="Directory for wdbc.csv and split.csv.")
+    wdbc_parser.set_defaults(func=_cmd_prepare_wdbc)
 
     prepare_dataset_parser = subparsers.add_parser(
         "prepare-dataset",

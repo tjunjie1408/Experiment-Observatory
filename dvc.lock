@@ -1,20 +1,58 @@
 schema: '2.0'
 stages:
   prepare-auto-mpg:
-    cmd: >-
-      uv run observatory prepare-dataset datasets/auto-mpg/raw/auto-mpg.data
+    cmd: uv run observatory prepare-dataset datasets/auto-mpg/raw/auto-mpg.data 
       datasets/auto-mpg/processed/weight-mpg.csv
     deps:
     - path: datasets/auto-mpg/raw/auto-mpg.data
       hash: md5
       md5: b858f4580d0066c48e260dd3b96f1ed8
       size: 30286
-    - path: src/observatory/data/auto_mpg.py
+    - path: src/observatory/datasets/tabular/auto_mpg.py
       hash: md5
-      md5: 3058e01d7763195b70bd005dbee12e38
-      size: 15545
+      md5: d8fb85e45c9e7b8129d32e77a633f32d
+      size: 15180
     outs:
     - path: datasets/auto-mpg/processed/weight-mpg.csv
       hash: md5
       md5: 7b28ce51dc0e5bfc5be3c51b28a502cc
       size: 16456
+  prepare-wdbc:
+    cmd: uv run --locked observatory prepare-wdbc 
+      datasets/breast-cancer/versions/1.0.0.yaml 
+      datasets/breast-cancer/processed
+    deps:
+    - path: datasets/breast-cancer/raw/wdbc.data
+      hash: md5
+      md5: c6dd5a2909808f3a901cf00cfd8dfff0
+      size: 124103
+    - path: datasets/breast-cancer/raw/wdbc.names
+      hash: md5
+      md5: 35cdd3b2956b5704b4e49f0014ad2f5e
+      size: 4708
+    - path: datasets/breast-cancer/versions/1.0.0.yaml
+      hash: md5
+      md5: dc43f51d26aa0f21a495101f5853f288
+      size: 1637
+    - path: pyproject.toml
+      hash: md5
+      md5: d8470a97c59d3333187ba31bca878edf
+      size: 1820
+    - path: src/observatory/cli.py
+      hash: md5
+      md5: 3c5df4eec23b03a58a44c8560d4bb7a4
+      size: 19040
+    - path: src/observatory/datasets/tabular/breast_cancer.py
+      hash: md5
+      md5: dff8fd7d4df0110177e59ccebf5890f0
+      size: 10081
+    - path: uv.lock
+      hash: md5
+      md5: ad09a993836180ab109a9503e04bb464
+      size: 223892
+    outs:
+    - path: datasets/breast-cancer/processed
+      hash: md5
+      md5: 0cd3c249b99de6dd9fc8f2e06855f23b.dir
+      size: 297557
+      nfiles: 2

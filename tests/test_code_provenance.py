@@ -77,3 +77,9 @@ def test_modified_scoped_file_marks_dirty(tmp_path: Path) -> None:
     prov = get_code_provenance(tmp_path)
 
     assert prov.git_dirty is True
+
+
+def test_pipeline_definition_marks_dirty(tmp_path: Path) -> None:
+    _init_clean_repo(tmp_path)
+    (tmp_path / "dvc.yaml").write_text("stages: {}\n", encoding="utf-8")
+    assert get_code_provenance(tmp_path).git_dirty is True
