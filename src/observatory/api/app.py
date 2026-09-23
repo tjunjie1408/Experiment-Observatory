@@ -2,14 +2,23 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI, Header, HTTPException, Query, status
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 
+from observatory.analytics.records import AnalysisInputError, load_analysis_run
+from observatory.analytics.tracking import (
+    TrackingHistoryNotFoundError,
+    TrackingHistoryUnavailableError,
+    TrackingSyncError,
+    read_tracking_history,
+)
+from observatory.api.catalog import CatalogUnavailableError, read_catalog
 from observatory.api.models import RunRequest
 from observatory.api.service import (
     EventCursorError,
@@ -28,6 +37,8 @@ def create_app(
     repo_root: Path,
     worker_target: WorkerTarget = _training_worker,
     cancellation_timeout: float = 5.0,
+    catalog_database: Path | None = None,
+    tracking_database: Path | None = None,
 ) -> FastAPI:
     service = RunService(
         runs_root=runs_root,
@@ -47,6 +58,58 @@ def create_app(
 
     app = FastAPI(title="Experiment Observatory local run service", lifespan=lifespan)
     app.state.run_service = service
+
+    @app.get("/api/catalog")
+    def get_catalog() -> dict[str, object]:
+        database = catalog_database or repo_root / "database/observatory.duckdb"
+        try:
+            return read_catalog(database)
+        except CatalogUnavailableError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
+            ) from exc
+
+    @app.get("/api/replay/{run_id}/{filename}")
+    def get_local_replay_file(run_id: str, filename: str) -> FileResponse:
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{1,127}", run_id) or filename not in {
+            "manifest.json",
+            "events.jsonl",
+            "snapshots.json",
+        }:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="replay not found")
+        run_dir = runs_root / run_id
+        path = run_dir / filename
+        if run_dir.is_symlink() or path.is_symlink() or not path.is_file():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="replay not found")
+        try:
+            run = load_analysis_run(run_dir)
+        except AnalysisInputError as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        if run.manifest.status != "completed":
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="run is not completed")
+        return FileResponse(
+            path,
+            media_type="application/json" if filename != "events.jsonl" else "application/x-ndjson",
+        )
+
+    @app.get("/api/tracking/{run_id}/metrics")
+    def get_tracked_metrics(run_id: str) -> dict[str, object]:
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{1,127}", run_id):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="run not found")
+        run_dir = runs_root / run_id
+        if run_dir.is_symlink() or not run_dir.is_dir():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="run not found")
+        try:
+            run = load_analysis_run(run_dir)
+            return read_tracking_history(run, tracking_database or repo_root / "database/mlflow.db")
+        except TrackingHistoryNotFoundError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        except TrackingHistoryUnavailableError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
+            ) from exc
+        except (AnalysisInputError, TrackingSyncError) as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
     @app.post("/api/runs", status_code=status.HTTP_202_ACCEPTED)
     def start_run(request: RunRequest) -> dict[str, object]:

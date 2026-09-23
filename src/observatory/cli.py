@@ -25,6 +25,13 @@ from typing import Any
 
 import yaml
 
+from observatory.analytics.recovery import (
+    backup_tracking,
+    restore_tracking_backup,
+    verify_tracking_backup,
+)
+from observatory.analytics.tracking import sync_run
+from observatory.analytics.warehouse import build_batch, export_browser_catalog, rebuild_catalog
 from observatory.datasets.synthetic.linear import SyntheticLinearConfig
 from observatory.datasets.tabular.auto_mpg import (
     AutoMpgDataset,
@@ -40,6 +47,7 @@ from observatory.experiments.linear_regression.record import (
     create_run,
     run_training,
 )
+from observatory.experiments.tree.study import run_tree_study
 from observatory.models.linear_regression.gradient_descent import (
     fit,
     least_squares_reference,
@@ -358,7 +366,20 @@ def _cmd_run_dataset(args: argparse.Namespace) -> int:
         return 2
 
     print(f"run {manifest.run_id}: status={manifest.status} stop_reason={manifest.stop_reason}")
-    return 0 if manifest.status == "completed" else 1
+    tracked = _track_recorded_run(manifest.run_id, Path(args.runs_root), args.tracking_database)
+    return 0 if manifest.status == "completed" and tracked else 1
+
+
+def _track_recorded_run(run_id: str, runs_root: Path, database: str | None) -> bool:
+    """Optional common post-recording hook; a tracking failure never erases the run."""
+    if database is None:
+        return True
+    try:
+        sync_run(runs_root / run_id, Path(database))
+    except Exception as exc:
+        print(f"run {run_id} saved, but tracking sync failed: {exc}", file=sys.stderr)
+        return False
+    return True
 
 
 def _cmd_run(args: argparse.Namespace) -> int:
@@ -372,7 +393,8 @@ def _cmd_run(args: argparse.Namespace) -> int:
         return 2
 
     print(f"run {manifest.run_id}: status={manifest.status} stop_reason={manifest.stop_reason}")
-    return 0 if manifest.status == "completed" else 1
+    tracked = _track_recorded_run(manifest.run_id, runs_root, args.tracking_database)
+    return 0 if manifest.status == "completed" and tracked else 1
 
 
 def _cmd_run_all(args: argparse.Namespace) -> int:
@@ -388,6 +410,8 @@ def _cmd_run_all(args: argparse.Namespace) -> int:
             continue
 
         print(f"run {manifest.run_id}: status={manifest.status} stop_reason={manifest.stop_reason}")
+        if not _track_recorded_run(manifest.run_id, runs_root, args.tracking_database):
+            exit_code = max(exit_code, 1)
         if manifest.status != "completed":
             exit_code = max(exit_code, 1)
     return exit_code
@@ -418,6 +442,109 @@ def _cmd_run_kmeans_study(args: argparse.Namespace) -> int:
             f"run {manifest.run_id}: status={manifest.status} "
             f"stop_reason={manifest.stop_reason} inertia_seed={manifest.training_config.init_seed}"
         )
+    tracked = True
+    for manifest in manifests:
+        if not _track_recorded_run(manifest.run_id, Path(args.runs_root), args.tracking_database):
+            tracked = False
+    return 0 if tracked else 1
+
+
+def _cmd_run_tree_study(args: argparse.Namespace) -> int:
+    try:
+        results = run_tree_study(Path(args.config), Path(args.runs_root), REPO_ROOT)
+    except (ValueError, OSError) as exc:
+        print(f"tree study rejected: {exc}", file=sys.stderr)
+        return 2
+    for run in results:
+        train = run.train_evaluation
+        validation = run.validation_evaluation
+        print(
+            f"run {run.run_id}: status={run.status} depth={run.training_config.max_depth} "
+            f"train_accuracy={train.accuracy if train else 'n/a'} "
+            f"validation_accuracy={validation.accuracy if validation else 'n/a'}"
+        )
+    tracked = True
+    for run in results:
+        if not _track_recorded_run(run.run_id, Path(args.runs_root), args.tracking_database):
+            tracked = False
+    return (
+        0
+        if tracked and len(results) == 5 and all(run.status == "completed" for run in results)
+        else 1
+    )
+
+
+def _cmd_sync_tracking(args: argparse.Namespace) -> int:
+    try:
+        result = sync_run(Path(args.run_dir), Path(args.database))
+    except Exception as exc:
+        print(f"tracking sync failed: {exc}", file=sys.stderr)
+        return 1
+    print(
+        f"tracked {result.run_id}: mlflow_run_id={result.mlflow_run_id} "
+        f"created={result.created} metrics={result.metric_count}"
+    )
+    return 0
+
+
+def _cmd_build_warehouse(args: argparse.Namespace) -> int:
+    try:
+        batch = build_batch(
+            [Path(value) for value in args.run_dirs],
+            Path(args.warehouse_root),
+            Path(args.tracking_database) if args.tracking_database else None,
+            Path(args.dataset_root),
+        )
+        rebuild_catalog(batch.batch_dir, Path(args.database))
+        if args.browser_catalog:
+            export_browser_catalog(batch.batch_dir, Path(args.browser_catalog))
+    except Exception as exc:
+        print(f"warehouse build failed: {exc}", file=sys.stderr)
+        return 1
+    print(
+        f"batch {batch.batch_id}: runs={batch.run_count} metrics={batch.metric_count} "
+        f"catalog={args.database}"
+    )
+    return 0
+
+
+def _cmd_rebuild_catalog(args: argparse.Namespace) -> int:
+    try:
+        rebuild_catalog(Path(args.batch_dir), Path(args.database))
+    except Exception as exc:
+        print(f"catalog rebuild failed: {exc}", file=sys.stderr)
+        return 1
+    print(f"rebuilt catalog: {args.database}")
+    return 0
+
+
+def _cmd_backup_tracking(args: argparse.Namespace) -> int:
+    try:
+        result = backup_tracking(Path(args.database), Path(args.target_dir))
+    except Exception as exc:
+        print(f"tracking backup failed: {exc}", file=sys.stderr)
+        return 1
+    print(f"tracking backup verified: {args.target_dir} database_sha256={result['databaseSha256']}")
+    return 0
+
+
+def _cmd_verify_tracking_backup(args: argparse.Namespace) -> int:
+    try:
+        verify_tracking_backup(Path(args.backup_dir))
+    except Exception as exc:
+        print(f"tracking backup verification failed: {exc}", file=sys.stderr)
+        return 1
+    print(f"tracking backup valid: {args.backup_dir}")
+    return 0
+
+
+def _cmd_restore_tracking_backup(args: argparse.Namespace) -> int:
+    try:
+        mapping = restore_tracking_backup(Path(args.backup_dir), Path(args.target_dir))
+    except Exception as exc:
+        print(f"tracking restore failed: {exc}", file=sys.stderr)
+        return 1
+    print(f"tracking restored: {args.target_dir} runs={len(mapping)}; IDs in restore.json")
     return 0
 
 
@@ -458,6 +585,9 @@ def build_parser() -> argparse.ArgumentParser:
         default=str(DEFAULT_RUNS_ROOT),
         help="Directory under which run directories are created (default: ./runs).",
     )
+    run_dataset_parser.add_argument(
+        "--tracking-database", help="Sync the saved run to MLflow SQLite."
+    )
     run_dataset_parser.set_defaults(func=_cmd_run_dataset)
 
     run_parser = subparsers.add_parser("run", help="Run a single synthetic experiment config.")
@@ -467,6 +597,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=str(DEFAULT_RUNS_ROOT),
         help="Directory under which run directories are created (default: ./runs).",
     )
+    run_parser.add_argument("--tracking-database", help="Sync the saved run to MLflow SQLite.")
     run_parser.set_defaults(func=_cmd_run)
 
     run_all_parser = subparsers.add_parser(
@@ -478,6 +609,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=str(DEFAULT_RUNS_ROOT),
         help="Directory under which run directories are created (default: ./runs).",
     )
+    run_all_parser.add_argument("--tracking-database", help="Sync each saved run to MLflow SQLite.")
     run_all_parser.set_defaults(func=_cmd_run_all)
 
     kmeans_parser = subparsers.add_parser(
@@ -489,7 +621,73 @@ def build_parser() -> argparse.ArgumentParser:
         default=str(DEFAULT_RUNS_ROOT),
         help="Directory under which run directories are created (default: ./runs).",
     )
+    kmeans_parser.add_argument("--tracking-database", help="Sync each saved run to MLflow SQLite.")
     kmeans_parser.set_defaults(func=_cmd_run_kmeans_study)
+
+    tree_parser = subparsers.add_parser(
+        "run-tree-study", help="Record the fixed five-depth WDBC decision-tree study."
+    )
+    tree_parser.add_argument("config", help="Path to the tree study YAML file.")
+    tree_parser.add_argument(
+        "--runs-root", default=str(DEFAULT_RUNS_ROOT), help="Directory for recorded runs."
+    )
+    tree_parser.add_argument("--tracking-database", help="Sync each saved run to MLflow SQLite.")
+    tree_parser.set_defaults(func=_cmd_run_tree_study)
+
+    tracking_parser = subparsers.add_parser(
+        "sync-tracking", help="Sync one terminal file run into local MLflow/SQLite."
+    )
+    tracking_parser.add_argument("run_dir", help="Source run directory.")
+    tracking_parser.add_argument("--database", default=str(REPO_ROOT / "database/mlflow.db"))
+    tracking_parser.set_defaults(func=_cmd_sync_tracking)
+
+    warehouse_parser = subparsers.add_parser(
+        "build-warehouse", help="Validate runs, publish a Parquet batch, and rebuild DuckDB."
+    )
+    warehouse_parser.add_argument("run_dirs", nargs="+", help="Exact source run directories.")
+    warehouse_parser.add_argument("--warehouse-root", default=str(REPO_ROOT / "warehouse"))
+    warehouse_parser.add_argument("--dataset-root", default=str(REPO_ROOT / "datasets"))
+    warehouse_parser.add_argument(
+        "--tracking-database",
+        help="Optional MLflow SQLite database for public-API link verification.",
+    )
+    warehouse_parser.add_argument(
+        "--database", default=str(REPO_ROOT / "database/observatory.duckdb")
+    )
+    warehouse_parser.add_argument(
+        "--browser-catalog",
+        help="Optional new static JSON target for the browser; never overwritten.",
+    )
+    warehouse_parser.set_defaults(func=_cmd_build_warehouse)
+
+    catalog_parser = subparsers.add_parser(
+        "rebuild-catalog", help="Rebuild DuckDB views from an existing validated Parquet batch."
+    )
+    catalog_parser.add_argument("batch_dir")
+    catalog_parser.add_argument(
+        "--database", default=str(REPO_ROOT / "database/observatory.duckdb")
+    )
+    catalog_parser.set_defaults(func=_cmd_rebuild_catalog)
+
+    backup_parser = subparsers.add_parser(
+        "backup-tracking", help="Create a verified SQLite and MLflow artifact-store backup."
+    )
+    backup_parser.add_argument("target_dir", help="New backup directory; never overwritten.")
+    backup_parser.add_argument("--database", default=str(REPO_ROOT / "database/mlflow.db"))
+    backup_parser.set_defaults(func=_cmd_backup_tracking)
+
+    verify_parser = subparsers.add_parser(
+        "verify-tracking-backup", help="Verify a previously created MLflow backup."
+    )
+    verify_parser.add_argument("backup_dir")
+    verify_parser.set_defaults(func=_cmd_verify_tracking_backup)
+
+    restore_parser = subparsers.add_parser(
+        "restore-tracking-backup", help="Rehydrate a verified MLflow backup at a new local path."
+    )
+    restore_parser.add_argument("backup_dir")
+    restore_parser.add_argument("target_dir", help="New empty target directory.")
+    restore_parser.set_defaults(func=_cmd_restore_tracking_backup)
 
     export_parser = subparsers.add_parser(
         "export", help="Export a completed run to a self-contained static bundle."

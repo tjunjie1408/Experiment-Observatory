@@ -57,10 +57,28 @@ This pipeline does not fit a model.
 ## Storage and recovery
 
 Original files were downloaded from the URLs in the version manifest on
-2026-09-22. Local DVC caching and reproduction are separate from remote backup:
-WDBC objects have **not been uploaded to Google Drive** by this task. A fresh
-clone cannot assume `dvc pull` will recover WDBC until those objects are published.
+2026-09-22. Local DVC caching and reproduction are separate from remote backup.
+The WDBC raw and processed objects were pushed to the configured Google Drive
+remote on 2026-09-23 (`dvc push`: 6 files pushed; `dvc status -c` verifies the
+current remote state). An isolated fresh-clone recovery has not yet been tested.
 With the local cache available, `dvc checkout datasets/breast-cancer/raw.dvc`
 restores raw files, and `dvc repro prepare-wdbc` reconstructs processed outputs.
 Alternatively download the exact official raw files to the listed paths and
 prepare; any changed upstream bytes are rejected by the pins.
+
+If DVC reports `Failed to authenticate GDrive` with `invalid_grant: Token has
+been expired or revoked`, reauthorize its cached Google Drive credentials from
+the repository root in PowerShell:
+
+```powershell
+uv run --locked dvc remote modify --local google-drive profile observatory-reauth
+uv run --locked dvc status -c
+```
+
+The status command should open Google's authorization flow if that profile has
+no valid cached credentials. Use an account with access to the configured
+remote. The `--local` setting stays in `.dvc/config.local`; do not commit
+credential files or paste tokens into issues. If the current profile is already
+`observatory-reauth` and has also expired, choose a new profile name in the
+first command before rerunning status. This is a recovery step, not something
+required for every push.
