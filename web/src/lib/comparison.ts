@@ -1,6 +1,7 @@
 import {
   isExternalDataConfig,
   isKMeansBundle,
+  isTreeBundle,
   type DataConfig,
   type RunBundle,
 } from "./schema";
@@ -57,6 +58,23 @@ export function getComparisonNotice(
     };
   }
 
+  const treeA = isTreeBundle(bundleA);
+  const treeB = isTreeBundle(bundleB);
+  if (treeA !== treeB) {
+    return { kind: "incompatible", message: "Different model families are shown side by side; their metrics are not aligned." };
+  }
+  if (isTreeBundle(bundleA) && isTreeBundle(bundleB)) {
+    const a = bundleA.manifest.dataConfig;
+    const b = bundleB.manifest.dataConfig;
+    const sameData = a.datasetId === b.datasetId && a.datasetVersion === b.datasetVersion &&
+      a.versionManifestSha256 === b.versionManifestSha256 &&
+      a.processedArtifactSha256 === b.processedArtifactSha256 && a.splitSha256 === b.splitSha256 &&
+      a.splitStrategy === b.splitStrategy && JSON.stringify(a.featureNames) === JSON.stringify(b.featureNames) &&
+      JSON.stringify(a.targetMapping) === JSON.stringify(b.targetMapping) && a.preprocessing === b.preprocessing;
+    if (!sameData) return { kind: "incompatible", message: "These CART runs use different data or split identities and are not directly comparable." };
+    return { kind: "compatible", message: `Same WDBC data and split. Depths: A=${bundleA.manifest.trainingConfig.maxDepth}, B=${bundleB.manifest.trainingConfig.maxDepth}. Final validation accuracy: A=${bundleA.manifest.validationEvaluation.accuracy.toFixed(4)}, B=${bundleB.manifest.validationEvaluation.accuracy.toFixed(4)}. Construction steps are not equivalent tree states.` };
+  }
+
   const kmeansA = isKMeansBundle(bundleA);
   const kmeansB = isKMeansBundle(bundleB);
   if (kmeansA !== kmeansB) {
@@ -91,7 +109,7 @@ export function getComparisonNotice(
       message: `Same data and K. Initialization seeds: A=${bundleA.manifest.trainingConfig.initSeed}, B=${bundleB.manifest.trainingConfig.initSeed}. Final inertia: A=${finalA?.toFixed(4)}, B=${finalB?.toFixed(4)}. Cluster labels are arbitrary.`,
     };
   }
-  if (isKMeansBundle(bundleA) || isKMeansBundle(bundleB)) {
+  if (isKMeansBundle(bundleA) || isKMeansBundle(bundleB) || isTreeBundle(bundleA) || isTreeBundle(bundleB)) {
     return { kind: "incompatible", message: "Model families cannot be aligned." };
   }
 

@@ -145,7 +145,7 @@ describe("validateBundle schema versions", () => {
   it("rejects unsupported manifest versions and event versions unequal to the manifest", () => {
     const unsupported = makeBundle();
     (unsupported.manifest as unknown as Record<string, unknown>).schemaVersion =
-      4;
+      5;
     const v2 = makeExternalBundle();
     v2.events.push({
       schemaVersion: 1,
@@ -162,7 +162,7 @@ describe("validateBundle schema versions", () => {
         unsupported.events,
         unsupported.snapshots,
       ),
-    ).toThrow(/supports schema versions 1, 2, and 3/);
+    ).toThrow(/supports schema versions 1, 2, 3, and 4/);
     expect(() => validateBundle(v2.manifest, v2.events, v2.snapshots)).toThrow(
       /event schemaVersion 1 does not match manifest schemaVersion 2/,
     );

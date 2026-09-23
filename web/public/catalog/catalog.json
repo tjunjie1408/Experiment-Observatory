@@ -1,0 +1,443 @@
+{
+  "artifacts": [
+    {
+      "bytes": 7670,
+      "relative_path": "kmeans-init-study-seed-0-20260923T020439631557-739de011/manifest.json",
+      "role": "manifest",
+      "run_id": "kmeans-init-study-seed-0-20260923T020439631557-739de011",
+      "sha256": "dce260c4c355447f8cf426ce49f5782f8d33d8e8c24c098408d2f5a8e208773e"
+    },
+    {
+      "bytes": 1737,
+      "relative_path": "kmeans-init-study-seed-0-20260923T020439631557-739de011/events.jsonl",
+      "role": "events",
+      "run_id": "kmeans-init-study-seed-0-20260923T020439631557-739de011",
+      "sha256": "d65556458c1b4f32aa813a5e59396803906d8481dde573dcc7fe1176fc82b9ee"
+    },
+    {
+      "bytes": 7834,
+      "relative_path": "kmeans-init-study-seed-0-20260923T020439631557-739de011/snapshots.json",
+      "role": "snapshots",
+      "run_id": "kmeans-init-study-seed-0-20260923T020439631557-739de011",
+      "sha256": "83a0ef40538cd83216340675254a7879972742846f6f3eadf10e081c5ecc2456"
+    },
+    {
+      "bytes": 7670,
+      "relative_path": "kmeans-init-study-seed-1-20260923T020439961094-edcd2ac3/manifest.json",
+      "role": "manifest",
+      "run_id": "kmeans-init-study-seed-1-20260923T020439961094-edcd2ac3",
+      "sha256": "4d7b84e95c878e885e7fd0a44c92cf234df0b21d803191bd2be3f4682b1845a5"
+    },
+    {
+      "bytes": 1737,
+      "relative_path": "kmeans-init-study-seed-1-20260923T020439961094-edcd2ac3/events.jsonl",
+      "role": "events",
+      "run_id": "kmeans-init-study-seed-1-20260923T020439961094-edcd2ac3",
+      "sha256": "1351e95d6691d535bb1ade2fecbd7b5e115570de0e905b119d14410328bc0d36"
+    },
+    {
+      "bytes": 7837,
+      "relative_path": "kmeans-init-study-seed-1-20260923T020439961094-edcd2ac3/snapshots.json",
+      "role": "snapshots",
+      "run_id": "kmeans-init-study-seed-1-20260923T020439961094-edcd2ac3",
+      "sha256": "e5dc8698c583bf5c3fc07b8b5655b57bbfb7a4c446eda267c39294ef0c72700b"
+    },
+    {
+      "bytes": 7670,
+      "relative_path": "kmeans-init-study-seed-2-20260923T020440296437-da4ce1b4/manifest.json",
+      "role": "manifest",
+      "run_id": "kmeans-init-study-seed-2-20260923T020440296437-da4ce1b4",
+      "sha256": "d4bbc144469cbf90b8f1f2dddba6ee60f1e4fc3b2493465777ae7f4d3ecb0dfe"
+    },
+    {
+      "bytes": 1042,
+      "relative_path": "kmeans-init-study-seed-2-20260923T020440296437-da4ce1b4/events.jsonl",
+      "role": "events",
+      "run_id": "kmeans-init-study-seed-2-20260923T020440296437-da4ce1b4",
+      "sha256": "e162e696a7b5aee533617c3dffcec34414a6a6fe1dbe402ae8d04077414595fc"
+    },
+    {
+      "bytes": 3351,
+      "relative_path": "kmeans-init-study-seed-2-20260923T020440296437-da4ce1b4/snapshots.json",
+      "role": "snapshots",
+      "run_id": "kmeans-init-study-seed-2-20260923T020440296437-da4ce1b4",
+      "sha256": "5ee8f5489a4f76fc926de6c6a7124720cd7f29c60423b5fd4af2517369d759b1"
+    },
+    {
+      "bytes": 7670,
+      "relative_path": "kmeans-init-study-seed-3-20260923T020440596715-9d2cacf4/manifest.json",
+      "role": "manifest",
+      "run_id": "kmeans-init-study-seed-3-20260923T020440596715-9d2cacf4",
+      "sha256": "cc2cf4e79910fd1bc8953d9f55cbb79e82ba82bf95b0572d647fa4d6f071e1f2"
+    },
+    {
+      "bytes": 1737,
+      "relative_path": "kmeans-init-study-seed-3-20260923T020440596715-9d2cacf4/events.jsonl",
+      "role": "events",
+      "run_id": "kmeans-init-study-seed-3-20260923T020440596715-9d2cacf4",
+      "sha256": "ad45214e95f7500498aab38478fd55f612799203e0d1e1d602f11ee1787f72c8"
+    },
+    {
+      "bytes": 7812,
+      "relative_path": "kmeans-init-study-seed-3-20260923T020440596715-9d2cacf4/snapshots.json",
+      "role": "snapshots",
+      "run_id": "kmeans-init-study-seed-3-20260923T020440596715-9d2cacf4",
+      "sha256": "5f72648768b94130539a42067e5302c048632779b92cd1ee9ccbc412a92d2177"
+    },
+    {
+      "bytes": 7670,
+      "relative_path": "kmeans-init-study-seed-4-20260923T020440924661-00e45652/manifest.json",
+      "role": "manifest",
+      "run_id": "kmeans-init-study-seed-4-20260923T020440924661-00e45652",
+      "sha256": "d2d73f3a3c26db711a797f1d41d44ee4d24f5ed34c63d01a8e392149b568dc74"
+    },
+    {
+      "bytes": 1737,
+      "relative_path": "kmeans-init-study-seed-4-20260923T020440924661-00e45652/events.jsonl",
+      "role": "events",
+      "run_id": "kmeans-init-study-seed-4-20260923T020440924661-00e45652",
+      "sha256": "7c66af180fb593421110bbd212e23712f6d7f1dac979efdf77eed6c7f5c16574"
+    },
+    {
+      "bytes": 7840,
+      "relative_path": "kmeans-init-study-seed-4-20260923T020440924661-00e45652/snapshots.json",
+      "role": "snapshots",
+      "run_id": "kmeans-init-study-seed-4-20260923T020440924661-00e45652",
+      "sha256": "8d779cdd499dd64663226f0a72f96d56b36fdd095243dda4c2084e05ba1efeee"
+    },
+    {
+      "bytes": 4554,
+      "relative_path": "linear-lr-converge-20260923T020414132815-e269e444/manifest.json",
+      "role": "manifest",
+      "run_id": "linear-lr-converge-20260923T020414132815-e269e444",
+      "sha256": "f8ad674e03b529791a190b1f3981fada8b059018999a04ad0e86e8e50e6c780e"
+    },
+    {
+      "bytes": 12499,
+      "relative_path": "linear-lr-converge-20260923T020414132815-e269e444/events.jsonl",
+      "role": "events",
+      "run_id": "linear-lr-converge-20260923T020414132815-e269e444",
+      "sha256": "33c8af3225cfd2ba6af790a23c4605be1cddcecbb163a3ada6aea6926e435008"
+    },
+    {
+      "bytes": 34177,
+      "relative_path": "linear-lr-converge-20260923T020414132815-e269e444/snapshots.json",
+      "role": "snapshots",
+      "run_id": "linear-lr-converge-20260923T020414132815-e269e444",
+      "sha256": "0f7e5fb1c64bf23b86e8985d7fcde6bf415ea14f2902ee9ba1273abcf2b3a8a2"
+    },
+    {
+      "bytes": 133758,
+      "relative_path": "wdbc-tree-depth-2-20260923T000548104730-8cccdb94/manifest.json",
+      "role": "manifest",
+      "run_id": "wdbc-tree-depth-2-20260923T000548104730-8cccdb94",
+      "sha256": "76e5b921fc850f82df94a48d93cb485a15850617105706174106db6db3bd5d65"
+    },
+    {
+      "bytes": 1639,
+      "relative_path": "wdbc-tree-depth-2-20260923T000548104730-8cccdb94/events.jsonl",
+      "role": "events",
+      "run_id": "wdbc-tree-depth-2-20260923T000548104730-8cccdb94",
+      "sha256": "de1a5934da12f05905a99d88a6b84b3db30b1a192bff4d2fcac3c83ca8ff3d3e"
+    },
+    {
+      "bytes": 31298,
+      "relative_path": "wdbc-tree-depth-2-20260923T000548104730-8cccdb94/snapshots.json",
+      "role": "snapshots",
+      "run_id": "wdbc-tree-depth-2-20260923T000548104730-8cccdb94",
+      "sha256": "1c6aae74c919c9b72fa8c9a12f0f7863b63e863f4acbf9a331757a95f846925b"
+    }
+  ],
+  "batchId": "3d4bb294df7cbbfe64de",
+  "datasetArtifacts": [
+    {
+      "available": true,
+      "bytes": 124103,
+      "dataset_key": "8bf6051f3969fcb99bc66a6390aa35ceafd3245c8f9e441abd9d236deefd72aa",
+      "relative_path": "raw/wdbc.data",
+      "role": "raw_data",
+      "sha256": "d606af411f3e5be8a317a5a8b652b425aaf0ff38ca683d5327ffff94c3695f4a"
+    },
+    {
+      "available": true,
+      "bytes": 4708,
+      "dataset_key": "8bf6051f3969fcb99bc66a6390aa35ceafd3245c8f9e441abd9d236deefd72aa",
+      "relative_path": "raw/wdbc.names",
+      "role": "source_description",
+      "sha256": "840e04e3f20f8a5b326892f3b9cbc01c4cd6f7e6c597630b701ef6c0ac79f5ef"
+    },
+    {
+      "available": true,
+      "bytes": 286208,
+      "dataset_key": "8bf6051f3969fcb99bc66a6390aa35ceafd3245c8f9e441abd9d236deefd72aa",
+      "relative_path": "processed/wdbc.csv",
+      "role": "processed",
+      "sha256": "47a1ad6a35ba66f3f92b5f3a52bb96d48d2aa49cc7c7ec35e0708806ba43a54f"
+    },
+    {
+      "available": true,
+      "bytes": 11349,
+      "dataset_key": "8bf6051f3969fcb99bc66a6390aa35ceafd3245c8f9e441abd9d236deefd72aa",
+      "relative_path": "processed/split.csv",
+      "role": "split",
+      "sha256": "0ef6330425ba5975465eabfd46565959ac859b694ac3f55598541a83cb41b3f1"
+    }
+  ],
+  "datasetVersions": [
+    {
+      "dataset_id": "SyntheticLinearConfig",
+      "dataset_identity": "216c16baa1a8a2cf98b288cdc5563880f5c34225444b741b39d6a0d999db9223",
+      "dataset_key": "318e33fb9b876c625157c6c07afa1286b1cf8460e559f23679e2e33d79ac5d66",
+      "dataset_version": "synthetic-216c16baa1a8",
+      "source_status": "synthetic",
+      "source_url": ""
+    },
+    {
+      "dataset_id": "uci-wdbc",
+      "dataset_identity": "5ef15b857e927d91adf9dc94834330e882444cb03f5d71d1d9d19ac43a6421a7",
+      "dataset_key": "8bf6051f3969fcb99bc66a6390aa35ceafd3245c8f9e441abd9d236deefd72aa",
+      "dataset_version": "1.0.0",
+      "source_status": "verified_manifest",
+      "source_url": "https://archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin/wdbc.data"
+    },
+    {
+      "dataset_id": "synthetic_kmeans_v1",
+      "dataset_identity": "4798197d78caf3022c8d8e20db16025ffcec31acbde906bcb38cb50b9a1c4665",
+      "dataset_key": "c454c02e9cd779c9f3c7ef7af0617c79699ac448486a2a73ac111efd48dc6691",
+      "dataset_version": "synthetic-4798197d78ca",
+      "source_status": "synthetic",
+      "source_url": ""
+    }
+  ],
+  "datasets": [
+    {
+      "citation": "",
+      "dataset_id": "SyntheticLinearConfig",
+      "license": "",
+      "source": "synthetic",
+      "source_page": "",
+      "title": "SyntheticLinearConfig"
+    },
+    {
+      "citation": "",
+      "dataset_id": "synthetic_kmeans_v1",
+      "license": "",
+      "source": "synthetic",
+      "source_page": "",
+      "title": "synthetic_kmeans_v1"
+    },
+    {
+      "citation": "Wolberg, W., Mangasarian, O., Street, N., & Street, W. (1993). Breast Cancer Wisconsin (Diagnostic) [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C5DW2B.",
+      "dataset_id": "uci-wdbc",
+      "license": "CC BY 4.0",
+      "source": "external_dataset",
+      "source_page": "https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic",
+      "title": "Breast Cancer Wisconsin (Diagnostic)"
+    }
+  ],
+  "metrics": [
+    {
+      "aggregation": "sum",
+      "name": "inertia",
+      "run_id": "kmeans-init-study-seed-0-20260923T020439631557-739de011",
+      "split": "all",
+      "step": 6,
+      "unit": "squared_distance",
+      "value": 158.83163955130038
+    },
+    {
+      "aggregation": "sum",
+      "name": "inertia",
+      "run_id": "kmeans-init-study-seed-1-20260923T020439961094-edcd2ac3",
+      "split": "all",
+      "step": 6,
+      "unit": "squared_distance",
+      "value": 158.83163955130038
+    },
+    {
+      "aggregation": "sum",
+      "name": "inertia",
+      "run_id": "kmeans-init-study-seed-2-20260923T020440296437-da4ce1b4",
+      "split": "all",
+      "step": 2,
+      "unit": "squared_distance",
+      "value": 195.9770789693926
+    },
+    {
+      "aggregation": "sum",
+      "name": "inertia",
+      "run_id": "kmeans-init-study-seed-3-20260923T020440596715-9d2cacf4",
+      "split": "all",
+      "step": 6,
+      "unit": "squared_distance",
+      "value": 195.9770789693926
+    },
+    {
+      "aggregation": "sum",
+      "name": "inertia",
+      "run_id": "kmeans-init-study-seed-4-20260923T020440924661-00e45652",
+      "split": "all",
+      "step": 6,
+      "unit": "squared_distance",
+      "value": 158.83163955130038
+    },
+    {
+      "aggregation": "mean",
+      "name": "mse",
+      "run_id": "linear-lr-converge-20260923T020414132815-e269e444",
+      "split": "train",
+      "step": 80,
+      "unit": "target_squared",
+      "value": 0.051613112652237725
+    },
+    {
+      "aggregation": "correct/total",
+      "name": "accuracy",
+      "run_id": "wdbc-tree-depth-2-20260923T000548104730-8cccdb94",
+      "split": "train",
+      "step": 6,
+      "unit": "fraction",
+      "value": 0.9596977329974811
+    },
+    {
+      "aggregation": "correct/total",
+      "name": "accuracy",
+      "run_id": "wdbc-tree-depth-2-20260923T000548104730-8cccdb94",
+      "split": "validation",
+      "step": 6,
+      "unit": "fraction",
+      "value": 0.9302325581395349
+    }
+  ],
+  "models": [
+    {
+      "algorithm": "kmeans_lloyd",
+      "config_json": "{\"algorithm\": \"kmeans_lloyd\", \"init_seed\": 0, \"max_iterations\": 20, \"n_clusters\": 3}",
+      "run_id": "kmeans-init-study-seed-0-20260923T020439631557-739de011"
+    },
+    {
+      "algorithm": "kmeans_lloyd",
+      "config_json": "{\"algorithm\": \"kmeans_lloyd\", \"init_seed\": 1, \"max_iterations\": 20, \"n_clusters\": 3}",
+      "run_id": "kmeans-init-study-seed-1-20260923T020439961094-edcd2ac3"
+    },
+    {
+      "algorithm": "kmeans_lloyd",
+      "config_json": "{\"algorithm\": \"kmeans_lloyd\", \"init_seed\": 2, \"max_iterations\": 20, \"n_clusters\": 3}",
+      "run_id": "kmeans-init-study-seed-2-20260923T020440296437-da4ce1b4"
+    },
+    {
+      "algorithm": "kmeans_lloyd",
+      "config_json": "{\"algorithm\": \"kmeans_lloyd\", \"init_seed\": 3, \"max_iterations\": 20, \"n_clusters\": 3}",
+      "run_id": "kmeans-init-study-seed-3-20260923T020440596715-9d2cacf4"
+    },
+    {
+      "algorithm": "kmeans_lloyd",
+      "config_json": "{\"algorithm\": \"kmeans_lloyd\", \"init_seed\": 4, \"max_iterations\": 20, \"n_clusters\": 3}",
+      "run_id": "kmeans-init-study-seed-4-20260923T020440924661-00e45652"
+    },
+    {
+      "algorithm": "linear_regression_gradient_descent",
+      "config_json": "{\"algorithm\": \"linear_regression_gradient_descent\", \"initial_bias\": 0.0, \"initial_weight\": 0.0, \"learning_rate\": 0.25, \"n_updates\": 80}",
+      "run_id": "linear-lr-converge-20260923T020414132815-e269e444"
+    },
+    {
+      "algorithm": "cart_gini",
+      "config_json": "{\"algorithm\": \"cart_gini\", \"max_depth\": 2, \"min_samples_split\": 2}",
+      "run_id": "wdbc-tree-depth-2-20260923T000548104730-8cccdb94"
+    }
+  ],
+  "runs": [
+    {
+      "created_at": "2026-09-23T02:04:39.632557+00:00",
+      "dataset_key": "c454c02e9cd779c9f3c7ef7af0617c79699ac448486a2a73ac111efd48dc6691",
+      "experiment_id": "kmeans-init-study-seed-0",
+      "manifest_sha256": "dce260c4c355447f8cf426ce49f5782f8d33d8e8c24c098408d2f5a8e208773e",
+      "mlflow_run_id": "858290ddb2a04d69a7c8a7041c4a8cb1",
+      "run_id": "kmeans-init-study-seed-0-20260923T020439631557-739de011",
+      "schema_version": 3,
+      "split_identity": null,
+      "status": "completed",
+      "stop_reason": "assignments_stable",
+      "tracking_state": "verified"
+    },
+    {
+      "created_at": "2026-09-23T02:04:39.961094+00:00",
+      "dataset_key": "c454c02e9cd779c9f3c7ef7af0617c79699ac448486a2a73ac111efd48dc6691",
+      "experiment_id": "kmeans-init-study-seed-1",
+      "manifest_sha256": "4d7b84e95c878e885e7fd0a44c92cf234df0b21d803191bd2be3f4682b1845a5",
+      "mlflow_run_id": "f066ea32ac26455996d9cf12cc8dc0b9",
+      "run_id": "kmeans-init-study-seed-1-20260923T020439961094-edcd2ac3",
+      "schema_version": 3,
+      "split_identity": null,
+      "status": "completed",
+      "stop_reason": "assignments_stable",
+      "tracking_state": "verified"
+    },
+    {
+      "created_at": "2026-09-23T02:04:40.297387+00:00",
+      "dataset_key": "c454c02e9cd779c9f3c7ef7af0617c79699ac448486a2a73ac111efd48dc6691",
+      "experiment_id": "kmeans-init-study-seed-2",
+      "manifest_sha256": "d4bbc144469cbf90b8f1f2dddba6ee60f1e4fc3b2493465777ae7f4d3ecb0dfe",
+      "mlflow_run_id": "b332e400cbd843fc970eb158de102212",
+      "run_id": "kmeans-init-study-seed-2-20260923T020440296437-da4ce1b4",
+      "schema_version": 3,
+      "split_identity": null,
+      "status": "completed",
+      "stop_reason": "assignments_stable",
+      "tracking_state": "verified"
+    },
+    {
+      "created_at": "2026-09-23T02:04:40.597715+00:00",
+      "dataset_key": "c454c02e9cd779c9f3c7ef7af0617c79699ac448486a2a73ac111efd48dc6691",
+      "experiment_id": "kmeans-init-study-seed-3",
+      "manifest_sha256": "cc2cf4e79910fd1bc8953d9f55cbb79e82ba82bf95b0572d647fa4d6f071e1f2",
+      "mlflow_run_id": "a9c820f6bc994ac689e6be2dbe63a289",
+      "run_id": "kmeans-init-study-seed-3-20260923T020440596715-9d2cacf4",
+      "schema_version": 3,
+      "split_identity": null,
+      "status": "completed",
+      "stop_reason": "assignments_stable",
+      "tracking_state": "verified"
+    },
+    {
+      "created_at": "2026-09-23T02:04:40.926659+00:00",
+      "dataset_key": "c454c02e9cd779c9f3c7ef7af0617c79699ac448486a2a73ac111efd48dc6691",
+      "experiment_id": "kmeans-init-study-seed-4",
+      "manifest_sha256": "d2d73f3a3c26db711a797f1d41d44ee4d24f5ed34c63d01a8e392149b568dc74",
+      "mlflow_run_id": "d6f76d310fc54d73a4b07eb042479374",
+      "run_id": "kmeans-init-study-seed-4-20260923T020440924661-00e45652",
+      "schema_version": 3,
+      "split_identity": null,
+      "status": "completed",
+      "stop_reason": "assignments_stable",
+      "tracking_state": "verified"
+    },
+    {
+      "created_at": "2026-09-23T02:04:14.133812+00:00",
+      "dataset_key": "318e33fb9b876c625157c6c07afa1286b1cf8460e559f23679e2e33d79ac5d66",
+      "experiment_id": "linear-lr-converge",
+      "manifest_sha256": "f8ad674e03b529791a190b1f3981fada8b059018999a04ad0e86e8e50e6c780e",
+      "mlflow_run_id": "c5549af6a94542eba2eb3166243dc4f3",
+      "run_id": "linear-lr-converge-20260923T020414132815-e269e444",
+      "schema_version": 1,
+      "split_identity": null,
+      "status": "completed",
+      "stop_reason": "max_steps",
+      "tracking_state": "verified"
+    },
+    {
+      "created_at": "2026-09-23T00:05:48.109743+00:00",
+      "dataset_key": "8bf6051f3969fcb99bc66a6390aa35ceafd3245c8f9e441abd9d236deefd72aa",
+      "experiment_id": "wdbc-tree-depth-study",
+      "manifest_sha256": "76e5b921fc850f82df94a48d93cb485a15850617105706174106db6db3bd5d65",
+      "mlflow_run_id": "4641f0176a264e378331b37d3e0d3540",
+      "run_id": "wdbc-tree-depth-2-20260923T000548104730-8cccdb94",
+      "schema_version": 4,
+      "split_identity": "0ef6330425ba5975465eabfd46565959ac859b694ac3f55598541a83cb41b3f1",
+      "status": "completed",
+      "stop_reason": "tree_complete",
+      "tracking_state": "verified"
+    }
+  ],
+  "schemaVersion": 1
+}

@@ -12,8 +12,9 @@
  * partially valid is displayed.
  */
 
+import { validateTreeBundle, type TreeRunBundle } from "./treeSchema";
 export const SCHEMA_VERSION = 1;
-export const SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3] as const;
+export const SUPPORTED_SCHEMA_VERSIONS = [1, 2, 3, 4] as const;
 export type SchemaVersion = (typeof SUPPORTED_SCHEMA_VERSIONS)[number];
 
 export type RunStatus =
@@ -225,7 +226,11 @@ export interface KMeansRunBundle {
   snapshots: KMeansSnapshot[];
 }
 
-export type RunBundle = LinearRunBundle | KMeansRunBundle;
+export type RunBundle = LinearRunBundle | KMeansRunBundle | TreeRunBundle;
+
+export function isTreeBundle(bundle: RunBundle): bundle is TreeRunBundle {
+  return bundle.manifest.schemaVersion === 4;
+}
 
 export function isKMeansBundle(bundle: RunBundle): bundle is KMeansRunBundle {
   return bundle.manifest.schemaVersion === 3;
@@ -290,7 +295,7 @@ function assertSchemaVersion(value: unknown, path: string): SchemaVersion {
   const version = assertFiniteNumber(value, path);
   if (!SUPPORTED_SCHEMA_VERSIONS.includes(version as SchemaVersion)) {
     throw new BundleValidationError(
-      `unsupported schemaVersion ${version}; this viewer supports schema versions 1, 2, and 3`,
+      `unsupported schemaVersion ${version}; this viewer supports schema versions 1, 2, 3, and 4`,
     );
   }
   return version as SchemaVersion;
@@ -564,6 +569,9 @@ function parseManifest(raw: unknown): RunManifest {
   if (schemaVersion === 3) {
     throw new BundleValidationError("schemaVersion 3 requires the K-means parser");
   }
+  if (schemaVersion === 4) {
+    throw new BundleValidationError("schemaVersion 4 requires the tree parser");
+  }
 
   const status = assertString(obj.status, "manifest.status");
   if (!RUN_STATUSES.includes(status as RunStatus)) {
@@ -634,7 +642,7 @@ function parseManifest(raw: unknown): RunManifest {
       }
     : {
         ...common,
-        schemaVersion,
+        schemaVersion: 2,
         dataConfig: parseExternalDataConfig(
           obj.dataConfig,
           "manifest.dataConfig",
@@ -975,6 +983,9 @@ export function validateBundle(
   snapshotsRaw: unknown[],
 ): RunBundle {
   const manifest = assertObject(manifestRaw, "manifest");
+  if (manifest.schemaVersion === 4) {
+    return validateTreeBundle(manifestRaw, eventsRaw, snapshotsRaw);
+  }
   return manifest.schemaVersion === 3
     ? validateKMeansBundle(manifestRaw, eventsRaw, snapshotsRaw)
     : validateLinearBundle(manifestRaw, eventsRaw, snapshotsRaw);

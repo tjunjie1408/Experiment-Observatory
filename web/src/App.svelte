@@ -1,6 +1,7 @@
 <script lang="ts">
   import AppHeader from "./components/AppHeader.svelte";
   import ComparisonNotice from "./components/ComparisonNotice.svelte";
+  import DatasetCatalog from "./components/DatasetCatalog.svelte";
   import RunPicker from "./components/RunPicker.svelte";
   import RunWorkspace from "./components/RunWorkspace.svelte";
   import { AVAILABLE_RUNS } from "./lib/availableRuns";
@@ -21,6 +22,7 @@
 
 <AppHeader {comparisonActive} />
 <main>
+  <DatasetCatalog onSelectReplay={(path: string) => (runAPath = path)} />
   <RunPicker bind:runAPath bind:runBPath />
   {#if comparisonNotice}
     <ComparisonNotice notice={comparisonNotice} />

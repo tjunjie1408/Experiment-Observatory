@@ -2,8 +2,9 @@
   import { onMount } from "svelte";
   import { BundleLoadError, loadRunBundle } from "../lib/loader";
   import { PlaybackController, type PlaybackState } from "../lib/playback";
-  import { isKMeansBundle, type RunBundle } from "../lib/schema";
+  import { isKMeansBundle, isTreeBundle, type RunBundle } from "../lib/schema";
   import KMeansPanel from "./KMeansPanel.svelte";
+  import TreePanel from "./TreePanel.svelte";
   import PlaybackControls from "./PlaybackControls.svelte";
   import SampleInspector from "./SampleInspector.svelte";
   import TelemetryPanel from "./TelemetryPanel.svelte";
@@ -27,7 +28,9 @@
 
   $: kmeansBundle = state.bundle && isKMeansBundle(state.bundle) ? state.bundle : null;
   $: kmeansSnapshot = kmeansBundle?.snapshots[state.currentStep];
-  $: linearBundle = state.bundle && !isKMeansBundle(state.bundle) ? state.bundle : null;
+  $: treeBundle = state.bundle && isTreeBundle(state.bundle) ? state.bundle : null;
+  $: treeSnapshot = treeBundle?.snapshots[state.currentStep];
+  $: linearBundle = state.bundle && !isKMeansBundle(state.bundle) && !isTreeBundle(state.bundle) ? state.bundle : null;
   $: linearSnapshot = linearBundle?.snapshots[state.currentStep];
   $: if (mounted && path && path !== requestedPath) void load(path);
 
@@ -126,6 +129,8 @@
     </div>
   {:else if kmeansBundle && kmeansSnapshot}
     <KMeansPanel bundle={kmeansBundle} snapshot={kmeansSnapshot} />
+  {:else if treeBundle && treeSnapshot}
+    <TreePanel bundle={treeBundle} currentStep={state.currentStep} selectedSampleId={state.selectedSampleId} onSelectSample={(id) => controller.selectSample(id)} />
   {:else if linearBundle && linearSnapshot}
     <div class="workspace-layout">
       <div class="charts-grid">
