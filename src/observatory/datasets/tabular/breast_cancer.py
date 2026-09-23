@@ -15,22 +15,8 @@ import numpy.typing as npt
 import yaml
 from pydantic import BaseModel, ConfigDict, Field
 
-FEATURE_NAMES = tuple(
-    f"{name}_{group}"
-    for group in ("mean", "se", "worst")
-    for name in (
-        "radius",
-        "texture",
-        "perimeter",
-        "area",
-        "smoothness",
-        "compactness",
-        "concavity",
-        "concave_points",
-        "symmetry",
-        "fractal_dimension",
-    )
-)
+from observatory.wdbc_contract import FEATURE_NAMES
+
 SPLIT_STRATEGY = "stratified-sha256-2026-v1"
 _ARTIFACTS = {
     "raw/wdbc.data": "raw_data",

@@ -29,6 +29,7 @@ from observatory.runtime.schema import (
     KMEANS_SCHEMA_VERSION,
     SCHEMA_VERSION,
     SUPPORTED_SCHEMA_VERSIONS,
+    TREE_SCHEMA_VERSION,
     DataConfig,
     DatasetSummary,
     Event,
@@ -40,13 +41,15 @@ from observatory.runtime.schema import (
     RunManifest,
     Snapshot,
 )
+from observatory.runtime.tree_schema import TreeRunManifest
+from observatory.runtime.tree_validation import TreeValidationError, validate_tree_bundle
 
 
 class ExportError(ValueError):
     """Raised when a run cannot be exported as-is; no output is written."""
 
 
-ManifestArtifact = RunManifest | KMeansRunManifest
+ManifestArtifact = RunManifest | KMeansRunManifest | TreeRunManifest
 
 
 def _read_json(path: Path, *, label: str) -> object:
@@ -211,6 +214,20 @@ def validate_run_for_export(
     manifest/events/snapshots.
     """
     manifest_raw = _read_json(run_dir / "manifest.json", label="manifest.json")
+    if isinstance(manifest_raw, dict) and manifest_raw.get("schemaVersion") == TREE_SCHEMA_VERSION:
+        events_raw = []
+        try:
+            events_raw = [
+                json.loads(line)
+                for line in (run_dir / "events.jsonl").read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+            snapshots_raw = _read_json(run_dir / "snapshots.json", label="snapshots.json")
+            if not isinstance(snapshots_raw, list):
+                raise ExportError("snapshots.json must be an array")
+            return validate_tree_bundle(manifest_raw, events_raw, snapshots_raw)
+        except (OSError, json.JSONDecodeError, TreeValidationError) as exc:
+            raise ExportError(f"schema-v4 validation failed: {exc}") from exc
     if (
         isinstance(manifest_raw, dict)
         and manifest_raw.get("schemaVersion") == KMEANS_SCHEMA_VERSION

@@ -1,0 +1,3 @@
+experiment_id: wdbc-tree-depth-study
+version_manifest: ../../datasets/breast-cancer/versions/1.0.0.yaml
+depths: [1, 2, 3, 4, 5]

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import multiprocessing
 import queue
 import re
@@ -122,6 +123,9 @@ class RunService:
         self.runs_root.mkdir(parents=True, exist_ok=True)
         for run_dir in self.runs_root.iterdir():
             if run_dir.is_dir() and (run_dir / "manifest.json").is_file():
+                raw = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
+                if isinstance(raw, dict) and raw.get("schemaVersion") in (3, 4):
+                    continue  # M4 does not own K-means or tree lifecycle recovery.
                 manifest = load_run_manifest(run_dir)
                 if manifest.status in {"running", "cancelling"}:
                     interrupt_orphaned_run(run_dir)
