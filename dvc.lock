@@ -36,20 +36,20 @@ stages:
       size: 1637
     - path: pyproject.toml
       hash: md5
-      md5: d8470a97c59d3333187ba31bca878edf
-      size: 1820
+      md5: 2678663a013afd9c7d14bd4caec02bd3
+      size: 1962
     - path: src/observatory/cli.py
       hash: md5
-      md5: 3c5df4eec23b03a58a44c8560d4bb7a4
-      size: 19040
+      md5: 0ba0a4d8297902a22cf46dc6594400ab
+      size: 27379
     - path: src/observatory/datasets/tabular/breast_cancer.py
       hash: md5
-      md5: dff8fd7d4df0110177e59ccebf5890f0
-      size: 10081
+      md5: 690dea018295f3c5eaeb761da004b1d9
+      size: 9807
     - path: uv.lock
       hash: md5
-      md5: ad09a993836180ab109a9503e04bb464
-      size: 223892
+      md5: 1690dab18a08ca9154684a0a4c92d837
+      size: 286284
     outs:
     - path: datasets/breast-cancer/processed
       hash: md5
