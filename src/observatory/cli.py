@@ -440,7 +440,7 @@ def _cmd_run_kmeans_study(args: argparse.Namespace) -> int:
     for manifest in manifests:
         print(
             f"run {manifest.run_id}: status={manifest.status} "
-            f"stop_reason={manifest.stop_reason} inertia_seed={manifest.training_config.init_seed}"
+            f"stop_reason={manifest.stop_reason} init_seed={manifest.training_config.init_seed}"
         )
     tracked = True
     for manifest in manifests:

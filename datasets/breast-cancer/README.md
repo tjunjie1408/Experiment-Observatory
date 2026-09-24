@@ -63,9 +63,9 @@ remote on 2026-09-23 (`dvc push`: 6 files pushed; `dvc status -c` verifies the
 current remote state). On 2026-09-24 a fresh `git clone` with an empty DVC cache
 ran `dvc pull -r google-drive datasets/breast-cancer/raw.dvc prepare-wdbc`. That
 fetched 6 objects from Google Drive and restored all four files, matching the
-pinned SHA-256 values. On Windows with `core.autocrlf=true`, such a clone checks
-out CRLF source files, so `dvc status` reports `prepare-wdbc` code dependencies as
-modified even though the data is intact.
+pinned SHA-256 values. Since `.gitattributes` enforces LF checkouts, `dvc status`
+and `dvc repro` in a fresh clone report every stage up to date (re-verified
+2026-09-24 on Windows with `core.autocrlf=true`).
 With the local cache available, `dvc checkout datasets/breast-cancer/raw.dvc`
 restores raw files, and `dvc repro prepare-wdbc` reconstructs processed outputs.
 Alternatively download the exact official raw files to the listed paths and

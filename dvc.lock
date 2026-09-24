@@ -40,8 +40,8 @@ stages:
       size: 1962
     - path: src/observatory/cli.py
       hash: md5
-      md5: 0ba0a4d8297902a22cf46dc6594400ab
-      size: 27379
+      md5: ff9de071549031ecd40a43e58aef12aa
+      size: 27376
     - path: src/observatory/datasets/tabular/breast_cancer.py
       hash: md5
       md5: 690dea018295f3c5eaeb761da004b1d9

@@ -17,3 +17,5 @@ web/src/node_modules/
 web/dist/
 web/*.log
 web/*.tsbuildinfo
+/database/
+/warehouse/

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 2,
-  "runId": "auto-mpg-weight-20260912T110646468005-304b6947",
+  "runId": "auto-mpg-weight-20260924T154906116967-25e375c6",
   "experimentId": "auto-mpg-weight",
-  "createdAt": "2026-09-12T11:06:46.469002+00:00",
+  "createdAt": "2026-09-24T15:49:06.117972+00:00",
   "status": "completed",
   "stopReason": "max_steps",
   "lastValidStep": 200,
@@ -11,7 +11,7 @@
     "source": "external_dataset",
     "datasetId": "uci-auto-mpg",
     "datasetVersion": "1.0.0",
-    "versionManifestSha256": "88817ed7d1121bd456b37e88492ba312ba36affd213bf9e1bc6279a111455a3e",
+    "versionManifestSha256": "c135af631a47fc0efce6e3eaf1147619877ea21045d78f24f5da3a0368b1f80c",
     "processedArtifactSha256": "b9b64882d6714f38fa5e368e855b1a25996b67ad9d053efde594fa28aa541607",
     "sourceFeature": "weight",
     "feature": "weight_standardized",
@@ -1232,7 +1232,7 @@
     "nUpdates": 200
   },
   "codeProvenance": {
-    "gitCommit": "f206fa30d91e76dcc5262239959f9b490606ac6e",
+    "gitCommit": "9c636856c88f0ac77c3967539a8ef202c7f726b7",
     "gitDirty": false,
     "unavailableReason": null
   },

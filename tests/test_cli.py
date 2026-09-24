@@ -99,6 +99,18 @@ def test_cli_run_subcommand_exit_codes(tmp_path: Path, capsys: pytest.CaptureFix
     assert args.func(args) == 2
 
 
+def test_cli_kmeans_study_reports_each_init_seed(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    config = Path(__file__).resolve().parents[1] / "configs/kmeans/initialization_study.yaml"
+    args = build_parser().parse_args(
+        ["run-kmeans-study", str(config), "--runs-root", str(tmp_path / "runs")]
+    )
+    assert args.func(args) == 0
+    lines = [line for line in capsys.readouterr().out.splitlines() if line.startswith("run ")]
+    assert [line.rsplit(" ", 1)[-1] for line in lines] == [f"init_seed={s}" for s in range(5)]
+
+
 def test_cli_run_subcommand_numerical_failure_exit_code(tmp_path: Path) -> None:
     parser = build_parser()
     runs_root = tmp_path / "runs"
