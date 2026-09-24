@@ -2,3 +2,7 @@
 # dependencies byte-wise, so a CRLF checkout (core.autocrlf=true) would make
 # dvc.lock look stale in a fresh clone. Binary files are auto-detected.
 * text=auto eol=lf
+
+# Exported replay bundles are generated data: hide them from diffs and PR stats.
+# Line endings still follow the rule above; use `git diff --text` to see content.
+web/public/runs/** linguist-generated=true -diff
