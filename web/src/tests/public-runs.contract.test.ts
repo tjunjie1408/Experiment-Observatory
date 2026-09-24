@@ -19,7 +19,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
-import { validateBundle } from "../lib/schema";
+import { isTreeBundle, validateBundle } from "../lib/schema";
 import { AVAILABLE_RUNS } from "../lib/availableRuns";
 
 const RUNS_DIR = fileURLToPath(new URL("../../public/runs", import.meta.url));
@@ -31,6 +31,9 @@ const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 const SHIPPED_RUN_IDS = AVAILABLE_RUNS.map((run) => run.id);
 const SYNTHETIC_COMPARISON_RUN_IDS = AVAILABLE_RUNS.filter(
   (run) => run.comparisonGroup === "synthetic-learning-rate",
+).map((run) => run.id);
+const TREE_DEPTH_RUN_IDS = AVAILABLE_RUNS.filter(
+  (run) => run.comparisonGroup === "tree-depth",
 ).map((run) => run.id);
 
 /**
@@ -152,6 +155,46 @@ describe("shipped demo bundles (public/runs)", () => {
       source: "external_dataset",
       datasetId: "uci-auto-mpg",
       datasetVersion: "1.0.0",
+    });
+  });
+
+  it("the WDBC tree-depth cohort shares one dataset and split across depths 1..5", () => {
+    const bundles = TREE_DEPTH_RUN_IDS.map((runId) => {
+      const { manifestRaw, eventsRaw, snapshotsRaw } = loadBundleFromDisk(runId);
+      const bundle = validateBundle(manifestRaw, eventsRaw, snapshotsRaw);
+      if (!isTreeBundle(bundle)) throw new Error(`${runId} is not a tree bundle`);
+      return bundle;
+    });
+
+    expect(bundles.map((b) => b.manifest.trainingConfig.maxDepth)).toEqual([1, 2, 3, 4, 5]);
+    expect(new Set(bundles.map((b) => JSON.stringify(b.manifest.dataConfig))).size).toBe(1);
+    expect(new Set(bundles.map((b) => JSON.stringify(b.manifest.dataset.roster))).size).toBe(1);
+    expect(bundles[0]!.manifest.dataConfig).toMatchObject({
+      datasetId: "uci-wdbc",
+      datasetVersion: "1.0.0",
+      splitSha256: "0ef6330425ba5975465eabfd46565959ac859b694ac3f55598541a83cb41b3f1",
+    });
+  });
+
+  it.each(TREE_DEPTH_RUN_IDS)("%s final accuracy matches an independent recount", (runId) => {
+    const { manifestRaw, eventsRaw, snapshotsRaw } = loadBundleFromDisk(runId);
+    const bundle = validateBundle(manifestRaw, eventsRaw, snapshotsRaw);
+    if (!isTreeBundle(bundle)) throw new Error(`${runId} is not a tree bundle`);
+    const roster = new Map(bundle.manifest.dataset.roster.map((row) => [row.sampleId, row]));
+    const counts = { train: { correct: 0, total: 0 }, validation: { correct: 0, total: 0 } };
+    for (const prediction of bundle.manifest.predictions) {
+      const row = roster.get(prediction.sampleId)!;
+      counts[row.split].total += 1;
+      counts[row.split].correct += Number(prediction.predictedClass === row.target);
+    }
+
+    expect(counts.train).toEqual({
+      correct: bundle.manifest.trainEvaluation.correct,
+      total: bundle.manifest.trainEvaluation.total,
+    });
+    expect(counts.validation).toEqual({
+      correct: bundle.manifest.validationEvaluation.correct,
+      total: bundle.manifest.validationEvaluation.total,
     });
   });
 });

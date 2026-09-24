@@ -14,7 +14,11 @@ export interface AvailableRun {
   id: string;
   label: string;
   path: string;
-  comparisonGroup: "synthetic-learning-rate" | "auto-mpg-weight" | "kmeans-initialization";
+  comparisonGroup:
+    | "synthetic-learning-rate"
+    | "auto-mpg-weight"
+    | "kmeans-initialization"
+    | "tree-depth";
 }
 
 export const AVAILABLE_RUNS: AvailableRun[] = [
@@ -71,5 +75,35 @@ export const AVAILABLE_RUNS: AvailableRun[] = [
     label: "K-means init seed 4",
     path: "/runs/kmeans-seed-4",
     comparisonGroup: "kmeans-initialization",
+  },
+  {
+    id: "tree-depth-1",
+    label: "WDBC decision tree depth 1",
+    path: "/runs/tree-depth-1",
+    comparisonGroup: "tree-depth",
+  },
+  {
+    id: "tree-depth-2",
+    label: "WDBC decision tree depth 2",
+    path: "/runs/tree-depth-2",
+    comparisonGroup: "tree-depth",
+  },
+  {
+    id: "tree-depth-3",
+    label: "WDBC decision tree depth 3",
+    path: "/runs/tree-depth-3",
+    comparisonGroup: "tree-depth",
+  },
+  {
+    id: "tree-depth-4",
+    label: "WDBC decision tree depth 4",
+    path: "/runs/tree-depth-4",
+    comparisonGroup: "tree-depth",
+  },
+  {
+    id: "tree-depth-5",
+    label: "WDBC decision tree depth 5",
+    path: "/runs/tree-depth-5",
+    comparisonGroup: "tree-depth",
   },
 ];

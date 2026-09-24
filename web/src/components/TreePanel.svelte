@@ -101,7 +101,7 @@
   small { color: #94a3b8; }
   .pending { padding: .35rem .7rem; color: #94a3b8; font-style: italic; }
   .tree-inspector { display: grid; gap: 1rem; align-content: start; }
-  .tree-inspector section { padding: 1rem; border: 1px solid #334155; border-radius: .75rem; background: #111e2e; }
+  .tree-inspector section { padding: 1rem; border: 1px solid #334155; border-radius: .75rem; background: #111e2e; color: #e2e8f0; }
   .eyebrow { color: #38bdf8; font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; }
   h3 { margin: .4rem 0; }
   dl div { display: flex; justify-content: space-between; gap: .5rem; padding: .35rem 0; border-bottom: 1px solid #334155; }
