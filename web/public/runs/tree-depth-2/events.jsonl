@@ -1,0 +1,10 @@
+{"schemaVersion":4,"runId":"wdbc-tree-depth-2-20260924T122847042442-7fb34483","seq":1,"kind":"run.created","step":null,"nodeId":null,"message":null}
+{"schemaVersion":4,"runId":"wdbc-tree-depth-2-20260924T122847042442-7fb34483","seq":2,"kind":"run.started","step":null,"nodeId":null,"message":null}
+{"schemaVersion":4,"runId":"wdbc-tree-depth-2-20260924T122847042442-7fb34483","seq":3,"kind":"tree.node_split","step":0,"nodeId":"r","message":null}
+{"schemaVersion":4,"runId":"wdbc-tree-depth-2-20260924T122847042442-7fb34483","seq":4,"kind":"tree.node_split","step":1,"nodeId":"rL","message":null}
+{"schemaVersion":4,"runId":"wdbc-tree-depth-2-20260924T122847042442-7fb34483","seq":5,"kind":"tree.node_leaf","step":2,"nodeId":"rLL","message":null}
+{"schemaVersion":4,"runId":"wdbc-tree-depth-2-20260924T122847042442-7fb34483","seq":6,"kind":"tree.node_leaf","step":3,"nodeId":"rLR","message":null}
+{"schemaVersion":4,"runId":"wdbc-tree-depth-2-20260924T122847042442-7fb34483","seq":7,"kind":"tree.node_split","step":4,"nodeId":"rR","message":null}
+{"schemaVersion":4,"runId":"wdbc-tree-depth-2-20260924T122847042442-7fb34483","seq":8,"kind":"tree.node_leaf","step":5,"nodeId":"rRL","message":null}
+{"schemaVersion":4,"runId":"wdbc-tree-depth-2-20260924T122847042442-7fb34483","seq":9,"kind":"tree.node_leaf","step":6,"nodeId":"rRR","message":null}
+{"schemaVersion":4,"runId":"wdbc-tree-depth-2-20260924T122847042442-7fb34483","seq":10,"kind":"run.completed","step":null,"nodeId":null,"message":null}

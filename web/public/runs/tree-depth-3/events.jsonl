@@ -1,0 +1,16 @@
+{"schemaVersion":4,"runId":"wdbc-tree-depth-3-20260924T122847483857-4ae8adcf","seq":1,"kind":"run.created","step":null,"nodeId":null,"message":null}
+{"schemaVersion":4,"runId":"wdbc-tree-depth-3-20260924T122847483857-4ae8adcf","seq":2,"kind":"run.started","step":null,"nodeId":null,"message":null}
+{"schemaVersion":4,"runId":"wdbc-tree-depth-3-20260924T122847483857-4ae8adcf","seq":3,"kind":"tree.node_split","step":0,"nodeId":"r","message":null}
+{"schemaVersion":4,"runId":"wdbc-tree-depth-3-20260924T122847483857-4ae8adcf","seq":4,"kind":"tree.node_split","step":1,"nodeId":"rL","message":null}
+{"schemaVersion":4,"runId":"wdbc-tree-depth-3-20260924T122847483857-4ae8adcf","seq":5,"kind":"tree.node_split","step":2,"nodeId":"rLL","message":null}
+{"schemaVersion":4,"runId":"wdbc-tree-depth-3-20260924T122847483857-4ae8adcf","seq":6,"kind":"tree.node_leaf","step":3,"nodeId":"rLLL","message":null}
+{"schemaVersion":4,"runId":"wdbc-tree-depth-3-20260924T122847483857-4ae8adcf","seq":7,"kind":"tree.node_leaf","step":4,"nodeId":"rLLR","message":null}
+{"schemaVersion":4,"runId":"wdbc-tree-depth-3-20260924T122847483857-4ae8adcf","seq":8,"kind":"tree.node_split","step":5,"nodeId":"rLR","message":null}
+{"schemaVersion":4,"runId":"wdbc-tree-depth-3-20260924T122847483857-4ae8adcf","seq":9,"kind":"tree.node_leaf","step":6,"nodeId":"rLRL","message":null}
+{"schemaVersion":4,"runId":"wdbc-tree-depth-3-20260924T122847483857-4ae8adcf","seq":10,"kind":"tree.node_leaf","step":7,"nodeId":"rLRR","message":null}
+{"schemaVersion":4,"runId":"wdbc-tree-depth-3-20260924T122847483857-4ae8adcf","seq":11,"kind":"tree.node_split","step":8,"nodeId":"rR","message":null}
+{"schemaVersion":4,"runId":"wdbc-tree-depth-3-20260924T122847483857-4ae8adcf","seq":12,"kind":"tree.node_split","step":9,"nodeId":"rRL","message":null}
+{"schemaVersion":4,"runId":"wdbc-tree-depth-3-20260924T122847483857-4ae8adcf","seq":13,"kind":"tree.node_leaf","step":10,"nodeId":"rRLL","message":null}
+{"schemaVersion":4,"runId":"wdbc-tree-depth-3-20260924T122847483857-4ae8adcf","seq":14,"kind":"tree.node_leaf","step":11,"nodeId":"rRLR","message":null}
+{"schemaVersion":4,"runId":"wdbc-tree-depth-3-20260924T122847483857-4ae8adcf","seq":15,"kind":"tree.node_leaf","step":12,"nodeId":"rRR","message":null}
+{"schemaVersion":4,"runId":"wdbc-tree-depth-3-20260924T122847483857-4ae8adcf","seq":16,"kind":"run.completed","step":null,"nodeId":null,"message":null}
