@@ -1,5 +1,6 @@
 <script lang="ts">
   export let comparisonActive = false;
+  export let studyLabel = "Recorded replay";
 </script>
 
 <header class="app-header">
@@ -7,7 +8,7 @@
   <div class="brand-copy">
     <strong>AI Experiment Observatory</strong>
     <span aria-hidden="true">/</span>
-    <span class="product-name">Linear Regression Replay</span>
+    <span class="product-name">{studyLabel}</span>
   </div>
   <div class="artifact-note">
     <span class="status-indicator" aria-hidden="true"></span>

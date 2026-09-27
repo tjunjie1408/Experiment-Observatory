@@ -34,7 +34,7 @@
     <div class="tree-scroll" role="tree" aria-label="Recorded decision tree">
       {#each visible as node (node.nodeId)}
         <button class:selected={selectedNode?.nodeId === node.nodeId} class:route={route.includes(node.nodeId)}
-          type="button" role="treeitem" aria-selected={selectedNode?.nodeId === node.nodeId} aria-level={node.depth + 1} style={`margin-left: ${node.depth * 1.5}rem`}
+          type="button" role="treeitem" aria-selected={selectedNode?.nodeId === node.nodeId} aria-level={node.depth + 1} style={`--indent: ${node.depth * 1.5}rem`}
           on:click={() => selectedNodeId = node.nodeId}>
           <span class="node-id">{node.nodeId}</span>
           {#if node.isLeaf}
@@ -92,22 +92,26 @@
 </div>
 
 <style>
-  .tree-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 1rem; padding: 1rem; }
-  .tree-scroll { max-height: 590px; overflow: auto; padding: 0.75rem; }
-  button { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; width: calc(100% - var(--indent, 0px)); max-width: 100%; margin-top: .25rem; padding: .55rem .7rem; border: 1px solid #334155; border-radius: .5rem; background: #172334; color: #e2e8f0; text-align: left; cursor: pointer; }
-  button.selected { border-color: #38bdf8; }
-  button.route { background: #1e3a4b; }
-  .node-id { min-width: 3rem; font-weight: 700; color: #7dd3fc; }
-  small { color: #94a3b8; }
-  .pending { padding: .35rem .7rem; color: #94a3b8; font-style: italic; }
-  .tree-inspector { display: grid; gap: 1rem; align-content: start; }
-  .tree-inspector section { padding: 1rem; border: 1px solid #334155; border-radius: .75rem; background: #111e2e; color: #e2e8f0; }
-  .eyebrow { color: #38bdf8; font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; }
-  h3 { margin: .4rem 0; }
-  dl div { display: flex; justify-content: space-between; gap: .5rem; padding: .35rem 0; border-bottom: 1px solid #334155; }
-  dt { color: #94a3b8; }
+  .tree-layout { display: grid; grid-template-columns: minmax(0, 3fr) minmax(260px, 1fr); gap: 16px; padding: 16px; }
+  .tree-card { min-height: 0; }
+  .tree-scroll { max-height: 590px; margin: 10px 0; overflow: auto; }
+  button { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; width: calc(100% - var(--indent, 0rem)); min-height: 0; margin: 4px 0 0 var(--indent, 0rem); padding: 7px 10px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); color: var(--text); text-align: left; }
+  button:hover:not(:disabled) { border-color: #aeb4bf; background: var(--surface-muted); }
+  button.route { border-color: #b7c0eb; background: #f1f3ff; }
+  button.selected { border-color: var(--accent); background: var(--surface-selected); box-shadow: inset 3px 0 0 var(--accent); }
+  .node-id { min-width: 3rem; color: var(--run-a); font: 700 11px/1.2 var(--font-data); }
+  small { color: var(--text-muted); font: 500 10px/1.3 var(--font-data); }
+  .pending { padding: 5px 10px; color: var(--text-muted); font: italic 500 11px/1.3 var(--font-data); }
+  .tree-inspector { display: grid; gap: 12px; align-content: start; min-width: 0; }
+  .tree-inspector section { display: grid; gap: 6px; min-width: 0; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+  .eyebrow, label { color: var(--text-muted); font: 600 10px/1 var(--font-data); letter-spacing: .07em; text-transform: uppercase; }
+  h3 { margin: 0; font-size: 13px; }
+  dl { margin: 0; font: 500 11px/1.3 var(--font-data); }
+  dl div { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--grid); }
+  dt { color: var(--text-muted); }
   dd { margin: 0; text-align: right; }
-  select { display: block; width: 100%; margin: .5rem 0; padding: .4rem; background: #172334; color: #e2e8f0; border: 1px solid #475569; }
-  p { overflow-wrap: anywhere; }
-  @media (max-width: 780px) { .tree-layout { grid-template-columns: 1fr; } }
+  select { display: block; width: 100%; }
+  p { margin: 0; font-size: 12px; overflow-wrap: anywhere; }
+  @media (max-width: 1080px) { .tree-layout { grid-template-columns: 1fr; } }
+  @media (max-width: 760px) { .tree-layout { gap: 12px; padding: 10px; } }
 </style>

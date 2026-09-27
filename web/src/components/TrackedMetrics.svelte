@@ -59,9 +59,9 @@
 </section>
 
 <style>
-  .tracked-metrics { margin-top: .7rem; padding: .7rem; border: 1px solid #475569; border-radius: .4rem; }
+  .tracked-metrics { margin-top: .7rem; padding: .7rem; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-muted); font-size: 12px; }
   .metric-series { margin-top: .7rem; }
   .metric-series h4 { margin: 0; overflow-wrap: anywhere; }
-  svg { display: block; width: 100%; max-width: 360px; color: #38bdf8; background: #0b1624; }
-  svg text { fill: #94a3b8; font-size: 9px; }
+  svg { display: block; width: 100%; max-width: 360px; color: var(--run-a); background: var(--surface); border: 1px solid var(--border); border-radius: 6px; }
+  svg text { fill: var(--text-muted); font-size: 9px; }
 </style>

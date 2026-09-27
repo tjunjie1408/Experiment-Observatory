@@ -589,12 +589,55 @@ main {
   border-top: 1px solid var(--border);
 }
 
+.panel-disclosure {
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.panel-disclosure > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 10px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font: 600 10px/1.2 var(--font-data);
+  letter-spacing: 0.07em;
+  list-style: none;
+  text-transform: uppercase;
+}
+
+.panel-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.panel-disclosure > summary::before {
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  content: "";
+  transform: rotate(-45deg);
+  transition: transform 120ms ease;
+}
+
+.panel-disclosure[open] > summary::before {
+  transform: rotate(45deg);
+}
+
+.panel-disclosure > summary:hover {
+  color: var(--text);
+}
+
+.panel-disclosure > summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .run-facts {
   display: grid;
   gap: 8px;
-  margin: 12px 0 0;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
+  margin: 10px 0 0;
 }
 
 .run-facts div {
@@ -761,6 +804,26 @@ main {
   to {
     background-position: -100% 0;
   }
+}
+
+/* Side-by-side runs get half the width each: stack each run's inspector below its charts. */
+.workspace-collection.comparison-grid .workspace-toolbar {
+  align-items: stretch;
+  flex-direction: column;
+}
+
+.workspace-collection.comparison-grid .playback-controls {
+  justify-content: flex-start;
+}
+
+.workspace-collection.comparison-grid .workspace-layout,
+.workspace-collection.comparison-grid .kmeans-layout,
+.workspace-collection.comparison-grid .tree-layout {
+  grid-template-columns: 1fr;
+}
+
+.workspace-collection.comparison-grid .inspector-stack {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 @media (max-width: 1260px) {

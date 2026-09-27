@@ -20,6 +20,40 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+describe("DatasetCatalog disclosure", () => {
+  it("starts collapsed with a summary of the selected dataset and local state", async () => {
+    vi.stubGlobal("fetch", vi.fn<typeof fetch>(async (input) => {
+      if (String(input) === "/api/catalog") throw new TypeError("Failed to fetch");
+      return new Response(JSON.stringify(catalog), { status: 200 });
+    }));
+
+    const { container } = render(DatasetCatalog, { onSelectReplay: vi.fn() });
+
+    expect(await screen.findByText("WDBC · 1.0.0")).toBeTruthy();
+    expect(screen.getByText("1 run")).toBeTruthy();
+    expect(await screen.findByText("Local API offline")).toBeTruthy();
+    expect(container.querySelector("details")?.open).toBe(false);
+  });
+
+  it("collapses after a replay is opened from the catalog", async () => {
+    vi.stubGlobal("fetch", vi.fn<typeof fetch>(async () =>
+      new Response(JSON.stringify(catalog), { status: 200 }),
+    ));
+    const onSelectReplay = vi.fn();
+    const { container } = render(DatasetCatalog, { onSelectReplay });
+    const details = container.querySelector("details")!;
+    await fireEvent.click(details.querySelector("summary")!);
+    // Browsers fire `toggle` after a summary click; jsdom flips `open` without it.
+    await fireEvent(details, new Event("toggle"));
+    expect(details.open).toBe(true);
+
+    await fireEvent.click(await screen.findByRole("button", { name: "Open local recorded replay" }));
+
+    expect(onSelectReplay).toHaveBeenCalledWith("/api/replay/tree-1");
+    await waitFor(() => expect(details.open).toBe(false));
+  });
+});
+
 describe("DatasetCatalog availability", () => {
   it("identifies stale local indexes and unavailable source artifacts", async () => {
     vi.stubGlobal("fetch", vi.fn<typeof fetch>(async (input) =>

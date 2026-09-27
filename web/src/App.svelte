@@ -4,7 +4,7 @@
   import DatasetCatalog from "./components/DatasetCatalog.svelte";
   import RunPicker from "./components/RunPicker.svelte";
   import RunWorkspace from "./components/RunWorkspace.svelte";
-  import { AVAILABLE_RUNS } from "./lib/availableRuns";
+  import { AVAILABLE_RUNS, studyLabelForPath } from "./lib/availableRuns";
   import { getComparisonNotice } from "./lib/comparison";
   import type { RunBundle } from "./lib/schema";
 
@@ -18,12 +18,13 @@
     ? getComparisonNotice(bundleA, bundleB)
     : null;
   $: if (!comparisonActive) bundleB = null;
+  $: studyLabel = studyLabelForPath(runAPath) ?? "Recorded replay";
 </script>
 
-<AppHeader {comparisonActive} />
+<AppHeader {comparisonActive} {studyLabel} />
 <main>
-  <DatasetCatalog onSelectReplay={(path: string) => (runAPath = path)} />
   <RunPicker bind:runAPath bind:runBPath />
+  <DatasetCatalog onSelectReplay={(path: string) => (runAPath = path)} />
   {#if comparisonNotice}
     <ComparisonNotice notice={comparisonNotice} />
   {/if}

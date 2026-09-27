@@ -85,40 +85,43 @@
       >Derived independently from the embedded dataset; not a recorded metric.</small
     >
   </div>
-  <dl class="run-facts">
-    <div>
-      <dt>Run ID</dt>
-      <dd>{bundle.manifest.runId}</dd>
-    </div>
-    <div>
-      <dt>Snapshots</dt>
-      <dd>{bundle.snapshots.length}</dd>
-    </div>
-    <div>
-      <dt>Stop reason</dt>
-      <dd>{bundle.manifest.stopReason ?? "not recorded"}</dd>
-    </div>
-    {#if isExternalDataConfig(bundle.manifest.dataConfig)}
+  <details class="panel-disclosure">
+    <summary>Run details</summary>
+    <dl class="run-facts">
       <div>
-        <dt>Dataset version</dt>
-        <dd>
-          {bundle.manifest.dataConfig.datasetId}
-          {bundle.manifest.dataConfig.datasetVersion}
-        </dd>
+        <dt>Run ID</dt>
+        <dd>{bundle.manifest.runId}</dd>
       </div>
       <div>
-        <dt>Feature → target</dt>
-        <dd>
-          {bundle.manifest.dataConfig.feature} ({bundle.manifest.dataConfig
-            .featureUnit}) → {bundle.manifest.dataConfig.target} ({bundle
-            .manifest.dataConfig.targetUnit})
-        </dd>
+        <dt>Snapshots</dt>
+        <dd>{bundle.snapshots.length}</dd>
       </div>
-    {:else}
       <div>
-        <dt>Dataset seed</dt>
-        <dd>{bundle.manifest.dataConfig.seed}</dd>
+        <dt>Stop reason</dt>
+        <dd>{bundle.manifest.stopReason ?? "not recorded"}</dd>
       </div>
-    {/if}
-  </dl>
+      {#if isExternalDataConfig(bundle.manifest.dataConfig)}
+        <div>
+          <dt>Dataset version</dt>
+          <dd>
+            {bundle.manifest.dataConfig.datasetId}
+            {bundle.manifest.dataConfig.datasetVersion}
+          </dd>
+        </div>
+        <div>
+          <dt>Feature → target</dt>
+          <dd>
+            {bundle.manifest.dataConfig.feature} ({bundle.manifest.dataConfig
+              .featureUnit}) → {bundle.manifest.dataConfig.target} ({bundle
+              .manifest.dataConfig.targetUnit})
+          </dd>
+        </div>
+      {:else}
+        <div>
+          <dt>Dataset seed</dt>
+          <dd>{bundle.manifest.dataConfig.seed}</dd>
+        </div>
+      {/if}
+    </dl>
+  </details>
 </aside>

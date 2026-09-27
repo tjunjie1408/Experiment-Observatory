@@ -4,8 +4,8 @@
   export let bundle: KMeansRunBundle;
   export let snapshot: KMeansSnapshot;
 
-  const colors = ["#38bdf8", "#f97316", "#a78bfa", "#22c55e", "#f43f5e"];
-  const colorFor = (index: number) => colors[index % colors.length] ?? "#e2e8f0";
+  const colors = ["#4656a6", "#d9772b", "#8a4fb3", "#2f8a5f", "#c2415d"];
+  const colorFor = (index: number) => colors[index % colors.length] ?? "#626873";
   const width = 680;
   const height = 430;
   const padding = 34;
@@ -41,7 +41,7 @@
       {/each}
       {#each snapshot.centers as center, index}
         <g transform={`translate(${scaleX(center[0])} ${scaleY(center[1])})`}>
-          <circle r="11" fill={colorFor(index)} stroke="white" stroke-width="3" />
+          <circle r="11" fill={colorFor(index)} class="center-marker" />
           <text y="4" text-anchor="middle">{index}</text>
         </g>
       {/each}
@@ -53,8 +53,10 @@
   </article>
 
   <aside class="kmeans-inspector">
-    <span class="eyebrow">Lloyd state</span>
-    <h3>Iteration {snapshot.iteration}</h3>
+    <div class="panel-heading">
+      <h3>Lloyd state</h3>
+      <span class="status-tag">Iteration {snapshot.iteration}</span>
+    </div>
     <dl>
       <div><dt>Phase</dt><dd>{snapshot.phase}</dd></div>
       <div><dt>Recorded step</dt><dd>{snapshot.step}</dd></div>
@@ -71,16 +73,17 @@
 </div>
 
 <style>
-  .kmeans-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(230px, 1fr); gap: 1rem; padding: 1rem; }
+  .kmeans-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(250px, 1fr); gap: 16px; padding: 16px; }
   .kmeans-chart { min-height: 0; }
-  svg { display: block; width: 100%; height: auto; }
-  .plot-bg { fill: rgba(15, 23, 42, 0.72); stroke: rgba(148, 163, 184, 0.2); }
-  text { fill: #07111f; font-size: 10px; font-weight: 800; }
-  .kmeans-inspector { border: 1px solid var(--border, #334155); border-radius: 12px; padding: 1rem; background: rgba(15, 23, 42, 0.7); }
-  .eyebrow { color: #38bdf8; font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; }
-  dl div { display: flex; justify-content: space-between; gap: 1rem; padding: 0.5rem 0; border-bottom: 1px solid rgba(148, 163, 184, 0.16); }
-  dt { color: #94a3b8; }
-  dd { margin: 0; text-align: right; }
-  p { color: #cbd5e1; line-height: 1.5; }
-  @media (max-width: 780px) { .kmeans-layout { grid-template-columns: 1fr; } }
+  svg { display: block; width: 100%; height: auto; margin-top: 10px; }
+  .plot-bg { fill: var(--surface); stroke: var(--border); }
+  .center-marker { stroke: var(--text); stroke-width: 2; }
+  text { fill: #fff; font: 700 10px var(--font-data); }
+  .kmeans-inspector { align-self: start; min-width: 0; padding: 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+  dl { margin: 10px 0 0; color: var(--text-muted); font: 500 11px/1.3 var(--font-data); }
+  dl div { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--grid); }
+  dd { margin: 0; color: var(--text); text-align: right; overflow-wrap: anywhere; }
+  p { margin: 12px 0 0; color: var(--text-muted); font-size: 12px; line-height: 1.5; }
+  @media (max-width: 1080px) { .kmeans-layout { grid-template-columns: 1fr; } }
+  @media (max-width: 760px) { .kmeans-layout { gap: 12px; padding: 10px; } }
 </style>

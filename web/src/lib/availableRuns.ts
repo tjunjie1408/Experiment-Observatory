@@ -107,3 +107,42 @@ export const AVAILABLE_RUNS: AvailableRun[] = [
     comparisonGroup: "tree-depth",
   },
 ];
+
+export type ComparisonGroup = AvailableRun["comparisonGroup"];
+
+export const COMPARISON_GROUP_LABELS: Record<ComparisonGroup, string> = {
+  "synthetic-learning-rate": "Linear regression · synthetic learning rates",
+  "auto-mpg-weight": "Linear regression · Auto MPG",
+  "kmeans-initialization": "K-means · initialization seeds",
+  "tree-depth": "Decision tree · WDBC depth study",
+};
+
+export interface RunGroup {
+  group: ComparisonGroup;
+  label: string;
+  runs: AvailableRun[];
+}
+
+/** Groups runs by comparison group, keeping first-appearance order. */
+export function groupAvailableRuns(runs: AvailableRun[] = AVAILABLE_RUNS): RunGroup[] {
+  const groups = new Map<ComparisonGroup, RunGroup>();
+  for (const run of runs) {
+    let entry = groups.get(run.comparisonGroup);
+    if (entry === undefined) {
+      entry = {
+        group: run.comparisonGroup,
+        label: COMPARISON_GROUP_LABELS[run.comparisonGroup],
+        runs: [],
+      };
+      groups.set(run.comparisonGroup, entry);
+    }
+    entry.runs.push(run);
+  }
+  return [...groups.values()];
+}
+
+/** Study label for a replay path, or null for paths outside the static registry. */
+export function studyLabelForPath(path: string, runs: AvailableRun[] = AVAILABLE_RUNS): string | null {
+  const run = runs.find((item) => item.path === path);
+  return run ? COMPARISON_GROUP_LABELS[run.comparisonGroup] : null;
+}
