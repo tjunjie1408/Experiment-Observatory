@@ -75,6 +75,25 @@ def test_batch_is_idempotent_and_catalog_rebuilds_elsewhere(tmp_path: Path) -> N
         assert len(response.json()["datasetArtifacts"]) == 4
 
 
+def test_runs_sharing_a_dataset_version_list_its_artifacts_once(tmp_path: Path) -> None:
+    runs_root = tmp_path / "runs"
+    sources = [
+        runs_root
+        / run_tree_experiment(VERSION, max_depth=depth, runs_root=runs_root, repo_root=ROOT).run_id
+        for depth in (1, 2)
+    ]
+    batch = build_batch(sources, tmp_path / "warehouse", dataset_root=ROOT / "datasets")
+    catalog = browser_catalog(batch.batch_dir)
+    assert len(catalog["runs"]) == 2
+    assert len(catalog["datasetVersions"]) == 1
+    assert sorted(row["relative_path"] for row in catalog["datasetArtifacts"]) == [
+        "processed/split.csv",
+        "processed/wdbc.csv",
+        "raw/wdbc.data",
+        "raw/wdbc.names",
+    ]
+
+
 def test_missing_raw_data_is_disclosed_and_present_bad_hash_is_rejected(tmp_path: Path) -> None:
     runs_root = tmp_path / "runs"
     run = run_tree_experiment(VERSION, max_depth=1, runs_root=runs_root, repo_root=ROOT)

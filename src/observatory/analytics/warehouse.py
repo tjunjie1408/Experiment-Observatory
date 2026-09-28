@@ -255,6 +255,9 @@ def _tables(
             "license": source_meta.get("license", ""),
             "citation": source_meta.get("citation", ""),
         }
+        if dataset_key not in versions:
+            for artifact in cast(list[dict[str, object]], source_meta["artifacts"]):
+                tables["dataset_artifacts"].append({"dataset_key": dataset_key, **artifact})
         versions[dataset_key] = {
             "dataset_key": dataset_key,
             "dataset_id": run.dataset_id,
@@ -263,8 +266,6 @@ def _tables(
             "source_url": source_meta.get("source_url", ""),
             "source_status": source_meta["status"],
         }
-        for artifact in cast(list[dict[str, object]], source_meta["artifacts"]):
-            tables["dataset_artifacts"].append({"dataset_key": dataset_key, **artifact})
         experiments.add(run.experiment_id)
         tracking_state, mlflow_id = tracking[run.run_id]
         tables["runs"].append(
