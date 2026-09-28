@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 from pathlib import Path
 
@@ -9,16 +10,19 @@ import duckdb
 import pytest
 from fastapi.testclient import TestClient
 
+from observatory.analytics.records import AnalysisInputError
 from observatory.analytics.warehouse import (
     WarehouseError,
     browser_catalog,
     build_batch,
     export_browser_catalog,
+    publish_static_catalog,
     rebuild_catalog,
 )
 from observatory.api.app import create_app
 from observatory.cli import run_one
 from observatory.experiments.tree.record import run_tree_experiment
+from observatory.runtime.export import export_run
 
 ROOT = Path(__file__).resolve().parents[1]
 VERSION = ROOT / "datasets/breast-cancer/versions/1.0.0.yaml"
@@ -92,6 +96,34 @@ def test_runs_sharing_a_dataset_version_list_its_artifacts_once(tmp_path: Path) 
         "raw/wdbc.data",
         "raw/wdbc.names",
     ]
+
+
+def test_static_catalog_indexes_exported_bundles_and_keeps_old_on_failure(
+    tmp_path: Path,
+) -> None:
+    runs_root = tmp_path / "runs"
+    run = run_tree_experiment(VERSION, max_depth=1, runs_root=runs_root, repo_root=ROOT)
+    bundle = tmp_path / "public/runs/tree-depth-1"
+    export_run(runs_root / run.run_id, bundle)
+    target = tmp_path / "public/catalog/catalog.json"
+
+    publish_static_catalog([bundle], target, dataset_root=ROOT / "datasets")
+    catalog = json.loads(target.read_bytes())
+    assert [row["run_id"] for row in catalog["runs"]] == [run.run_id]
+    assert b"\r" not in target.read_bytes()
+    published = target.read_bytes()
+
+    other = run_tree_experiment(VERSION, max_depth=2, runs_root=runs_root, repo_root=ROOT)
+    broken = tmp_path / "public/runs/broken"
+    export_run(runs_root / other.run_id, broken)
+    (broken / "snapshots.json").write_text("[]", encoding="utf-8")
+    with pytest.raises(AnalysisInputError):
+        publish_static_catalog([bundle, broken], target, dataset_root=ROOT / "datasets")
+    duplicate = tmp_path / "public/runs/duplicate"
+    shutil.copytree(bundle, duplicate)
+    with pytest.raises(WarehouseError, match="duplicate run ID"):
+        publish_static_catalog([bundle, duplicate], target, dataset_root=ROOT / "datasets")
+    assert target.read_bytes() == published
 
 
 def test_missing_raw_data_is_disclosed_and_present_bad_hash_is_rejected(tmp_path: Path) -> None:

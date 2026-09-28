@@ -11,6 +11,7 @@ import pytest
 import yaml
 
 from observatory.cli import ConfigError, build_parser, run_one
+from observatory.runtime.export import export_run
 
 CONFIGS_DIR = Path(__file__).resolve().parents[1] / "configs" / "linear"
 
@@ -109,6 +110,26 @@ def test_cli_kmeans_study_reports_each_init_seed(
     assert args.func(args) == 0
     lines = [line for line in capsys.readouterr().out.splitlines() if line.startswith("run ")]
     assert [line.rsplit(" ", 1)[-1] for line in lines] == [f"init_seed={s}" for s in range(5)]
+
+
+def test_cli_publish_static_catalog_exit_codes(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    manifest = run_one(write_config(tmp_path), tmp_path / "runs")
+    bundle = tmp_path / "public/runs/demo"
+    export_run(tmp_path / "runs" / manifest.run_id, bundle)
+    target = tmp_path / "public/catalog/catalog.json"
+    parser = build_parser()
+
+    args = parser.parse_args(["publish-static-catalog", str(bundle), "--target", str(target)])
+    assert args.func(args) == 0
+    assert "runs=1" in capsys.readouterr().out
+    assert json.loads(target.read_bytes())["runs"][0]["run_id"] == manifest.run_id
+
+    missing = tmp_path / "public/runs/missing"
+    args = parser.parse_args(["publish-static-catalog", str(missing), "--target", str(target)])
+    assert args.func(args) == 1
+    assert "static catalog publish failed" in capsys.readouterr().err
 
 
 def test_cli_run_subcommand_numerical_failure_exit_code(tmp_path: Path) -> None:

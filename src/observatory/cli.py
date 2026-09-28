@@ -31,7 +31,12 @@ from observatory.analytics.recovery import (
     verify_tracking_backup,
 )
 from observatory.analytics.tracking import sync_run
-from observatory.analytics.warehouse import build_batch, export_browser_catalog, rebuild_catalog
+from observatory.analytics.warehouse import (
+    build_batch,
+    export_browser_catalog,
+    publish_static_catalog,
+    rebuild_catalog,
+)
 from observatory.datasets.synthetic.linear import SyntheticLinearConfig
 from observatory.datasets.tabular.auto_mpg import (
     AutoMpgDataset,
@@ -508,6 +513,18 @@ def _cmd_build_warehouse(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_publish_static_catalog(args: argparse.Namespace) -> int:
+    try:
+        batch = publish_static_catalog(
+            [Path(value) for value in args.bundle_dirs], Path(args.target), Path(args.dataset_root)
+        )
+    except Exception as exc:
+        print(f"static catalog publish failed: {exc}", file=sys.stderr)
+        return 1
+    print(f"batch {batch.batch_id}: runs={batch.run_count} catalog={args.target}")
+    return 0
+
+
 def _cmd_rebuild_catalog(args: argparse.Namespace) -> int:
     try:
         rebuild_catalog(Path(args.batch_dir), Path(args.database))
@@ -659,6 +676,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional new static JSON target for the browser; never overwritten.",
     )
     warehouse_parser.set_defaults(func=_cmd_build_warehouse)
+
+    static_parser = subparsers.add_parser(
+        "publish-static-catalog",
+        help="Index exported replay bundles into the static browser catalog.",
+    )
+    static_parser.add_argument("bundle_dirs", nargs="+", help="Exported replay bundle directories.")
+    static_parser.add_argument(
+        "--target", default=str(REPO_ROOT / "web/public/catalog/catalog.json")
+    )
+    static_parser.add_argument("--dataset-root", default=str(REPO_ROOT / "datasets"))
+    static_parser.set_defaults(func=_cmd_publish_static_catalog)
 
     catalog_parser = subparsers.add_parser(
         "rebuild-catalog", help="Rebuild DuckDB views from an existing validated Parquet batch."

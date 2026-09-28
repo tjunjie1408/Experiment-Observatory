@@ -483,3 +483,36 @@ def export_browser_catalog(batch_dir: Path, target: Path) -> None:
     finally:
         if staging is not None and staging.exists():
             staging.unlink()
+
+
+BUNDLE_FILES = ("manifest.json", "events.jsonl", "snapshots.json")
+
+
+def publish_static_catalog(
+    bundle_dirs: list[Path], target: Path, dataset_root: Path | None = None
+) -> BatchResult:
+    """Index exported replay bundles and replace the static catalog only on success.
+
+    Shipped bundles live in directories named for the UI, not by run ID, so each
+    is staged under its run ID before the batch is validated and built.
+    """
+    with tempfile.TemporaryDirectory(prefix=".static-catalog-") as tmp_name:
+        staging = Path(tmp_name)
+        run_dirs: list[Path] = []
+        for bundle in bundle_dirs:
+            try:
+                run_id = json.loads((bundle / "manifest.json").read_bytes())["runId"]
+            except (OSError, ValueError, KeyError, TypeError) as exc:
+                raise WarehouseError(f"invalid bundle {bundle}: {exc}") from exc
+            if not isinstance(run_id, str) or not run_id or Path(run_id).name != run_id:
+                raise WarehouseError(f"invalid bundle {bundle}: unusable runId")
+            run_dir = staging / "runs" / run_id
+            if run_dir.exists():
+                raise WarehouseError(f"duplicate run ID in bundles: {run_id}")
+            run_dir.mkdir(parents=True)
+            for name in BUNDLE_FILES:
+                shutil.copyfile(bundle / name, run_dir / name)
+            run_dirs.append(run_dir)
+        batch = build_batch(run_dirs, staging / "warehouse", dataset_root=dataset_root)
+        export_browser_catalog(batch.batch_dir, target)
+        return batch
