@@ -22,6 +22,7 @@ describe("groupAvailableRuns", () => {
   it("does not merge non-adjacent runs of the same group out of order", () => {
     const run = (id: string, comparisonGroup: AvailableRun["comparisonGroup"]): AvailableRun => ({
       id,
+      runId: `${id}-run`,
       label: id,
       path: `/runs/${id}`,
       comparisonGroup,

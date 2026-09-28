@@ -115,6 +115,14 @@ describe("shipped demo bundles (public/runs)", () => {
     },
   );
 
+  it.each(AVAILABLE_RUNS.map((run) => [run.id, run] as const))(
+    "%s registry entry names the shipped manifest's runId",
+    (id, run) => {
+      const { manifestRaw } = loadBundleFromDisk(id);
+      expect((manifestRaw as { runId: string }).runId).toBe(run.runId);
+    },
+  );
+
   it("the synthetic learning-rate cohort shares data, initialization, and budget", () => {
     const manifests = SYNTHETIC_COMPARISON_RUN_IDS.map((runId) => {
       const { manifestRaw } = loadBundleFromDisk(runId);

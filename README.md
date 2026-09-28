@@ -66,6 +66,7 @@ uv run observatory run-dataset configs/linear/auto_mpg_weight.yaml --runs-root r
 uv run observatory run-kmeans-study configs/kmeans/initialization_study.yaml --runs-root runs
 uv run observatory run-tree-study configs/tree/depth_study.yaml --runs-root runs
 uv run observatory export runs/<run-id> <new-export-directory>
+uv run --locked observatory publish-static-catalog web/public/runs/*/
 uv run observatory-service
 uv run pytest -q
 uv run ruff check .
@@ -82,8 +83,12 @@ npm run build
 `export` refuses to overwrite an existing directory. To ship a bundle, record it
 from a commit where `src`, `configs`, `datasets`, `pyproject.toml`, `uv.lock` and
 `dvc.lock` are committed. That keeps `gitDirty: false`, which the public-run
-contract test requires. Then export it under `web/public/runs/<id>/` and add it
-to `web/src/lib/availableRuns.ts`.
+contract test requires. Then export it under `web/public/runs/<id>/`, add it
+to `web/src/lib/availableRuns.ts` with the manifest's `runId`, and rerun
+`publish-static-catalog` so `web/public/catalog/catalog.json` indexes exactly the
+shipped bundles. The public-run and public-catalog contract tests fail if the
+registry, bundles, or catalog disagree, including catalog hashes that don't match
+the shipped bytes.
 
 The service binds only to `127.0.0.1:8000`. `POST /api/runs` accepts an inline
 synthetic linear-regression configuration, `GET /api/runs/{runId}` reads its

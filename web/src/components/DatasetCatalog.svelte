@@ -136,7 +136,7 @@
           {#if runs.length === 0}<p class="catalog-note">No validated runs are indexed for this version.</p>{/if}
           <div class="catalog-runs">
             {#each runs as run (run.run_id)}
-              {@const replay = AVAILABLE_RUNS.find((item) => item.id === run.run_id)}
+              {@const replay = AVAILABLE_RUNS.find((item) => item.runId === run.run_id)}
               <article>
                 <h3 title={run.run_id}>{run.run_id}</h3>
                 <p class="run-meta">{run.experiment_id} · {run.status} · {run.tracking_state}</p>

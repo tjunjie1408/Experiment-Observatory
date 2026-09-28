@@ -3,6 +3,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import DatasetCatalog from "../../components/DatasetCatalog.svelte";
+import { AVAILABLE_RUNS } from "../../lib/availableRuns";
 
 const catalog = {
   schemaVersion: 1,
@@ -99,6 +100,22 @@ describe("DatasetCatalog availability", () => {
 
     await waitFor(() => expect(screen.getByRole("button", { name: "Open local recorded replay" })).toBeTruthy());
     expect(screen.queryByText(/Local catalog batch differs/)).toBeNull();
+  });
+
+  it("opens a shipped bundle for an indexed run while the local service is offline", async () => {
+    const shipped = AVAILABLE_RUNS[AVAILABLE_RUNS.length - 1]!;
+    const staticCatalog = { ...catalog, runs: [{ ...catalog.runs[0], run_id: shipped.runId }] };
+    vi.stubGlobal("fetch", vi.fn<typeof fetch>(async (input) => {
+      if (String(input) === "/api/catalog") throw new TypeError("Failed to fetch");
+      return new Response(JSON.stringify(staticCatalog), { status: 200 });
+    }));
+    const onSelectReplay = vi.fn();
+
+    render(DatasetCatalog, { onSelectReplay });
+    await fireEvent.click(await screen.findByRole("button", { name: "Open recorded replay" }));
+
+    expect(onSelectReplay).toHaveBeenCalledWith(shipped.path);
+    expect(screen.queryByText(/Replay bundle is not published/)).toBeNull();
   });
 
   it("shows matching values and explains a split mismatch without ranking models", async () => {
