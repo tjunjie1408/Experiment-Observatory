@@ -162,7 +162,7 @@ export function parseCatalog(raw: unknown): BrowserCatalog {
 }
 
 export async function loadCatalog(): Promise<BrowserCatalog> {
-  for (const url of ["/catalog/catalog.json", "/api/catalog"]) {
+  for (const url of ["catalog/catalog.json", "/api/catalog"]) {
     try {
       const response = await fetch(url);
       if (response.ok) return parseCatalog(await response.json());

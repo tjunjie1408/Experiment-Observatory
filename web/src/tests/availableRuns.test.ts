@@ -40,9 +40,17 @@ describe("groupAvailableRuns", () => {
   });
 });
 
+describe("static hosting", () => {
+  it("resolves every shipped bundle relative to the page, so any base path works", () => {
+    for (const run of AVAILABLE_RUNS) {
+      expect(run.path).toBe(`runs/${run.id}`);
+    }
+  });
+});
+
 describe("studyLabelForPath", () => {
   it("names the study of a shipped run and returns null for local replay paths", () => {
-    expect(studyLabelForPath("/runs/tree-depth-3")).toBe("Decision tree · WDBC depth study");
+    expect(studyLabelForPath("runs/tree-depth-3")).toBe("Decision tree · WDBC depth study");
     expect(studyLabelForPath("/api/replay/some-run")).toBeNull();
   });
 });

@@ -6,6 +6,8 @@ export default defineConfig({
   resolve: {
     conditions: ["browser"],
   },
+  // Relative asset and data URLs let the static build run under any base path.
+  base: "./",
   root: "src",
   publicDir: "../public",
   build: {

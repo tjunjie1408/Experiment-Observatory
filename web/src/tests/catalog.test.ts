@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { compareCatalogRuns, parseCatalog } from "../lib/catalog";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { compareCatalogRuns, loadCatalog, parseCatalog } from "../lib/catalog";
 
 const valid = {
   schemaVersion: 1,
@@ -72,5 +72,17 @@ describe("catalog metric comparisons", () => {
     const catalog = parseCatalog({ ...valid, runs: [...valid.runs, peer], metrics: valid.metrics });
     expect(compareCatalogRuns(catalog, catalog.runs[0]!, catalog.runs[1]!).reasons).toContain("tree-2 has no final metrics.");
     expect(compareCatalogRuns(catalog, catalog.runs[0]!, { ...catalog.runs[1]!, status: "failed" }).reasons).toContain("Only completed runs can be compared.");
+  });
+});
+
+describe("loadCatalog", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("reads the published catalog relative to the page before asking the local API", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response(JSON.stringify(valid), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    expect((await loadCatalog()).batchId).toBe("batch-1");
+    expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual(["catalog/catalog.json"]);
   });
 });

@@ -90,6 +90,13 @@ shipped bundles. The public-run and public-catalog contract tests fail if the
 registry, bundles, or catalog disagree, including catalog hashes that don't match
 the shipped bytes.
 
+### Static site
+
+`npm run build` writes a self-contained site to `web/dist/`. Asset and data URLs
+are relative, so the directory can be served from any path, such as
+`https://<host>/<repo>/`. No Python service is needed. Offline, the catalog shows
+"Local API offline" and opens only shipped bundles.
+
 The service binds only to `127.0.0.1:8000`. `POST /api/runs` accepts an inline
 synthetic linear-regression configuration, `GET /api/runs/{runId}` reads its
 manifest, `POST /api/runs/{runId}/cancel` requests idempotent cancellation, and

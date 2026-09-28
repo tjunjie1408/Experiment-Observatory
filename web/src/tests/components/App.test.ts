@@ -16,14 +16,14 @@ describe("App comparison", () => {
   it("activates Run B and announces the comparison contract", async () => {
     const runA = makeBundle({ runId: "converge", learningRate: 0.25 });
     const runB = makeBundle({ runId: "slow", learningRate: 0.001 });
-    mockBundleFetch((url) => (url.startsWith("/runs/slow/") ? runB : runA));
+    mockBundleFetch((url) => (url.startsWith("runs/slow/") ? runB : runA));
     const user = userEvent.setup();
 
     render(App);
     await screen.findByText("converge loaded with 3 recorded snapshots");
     await user.selectOptions(
       screen.getByRole("combobox", { name: "Compare with Run B" }),
-      "/runs/slow",
+      "runs/slow",
     );
 
     expect(
