@@ -41,7 +41,9 @@ def atomic_write_json(path: Path, payload: object) -> None:
     """Write JSON through a temporary file and bounded atomic-replace retries."""
     tmp_path = path.with_suffix(path.suffix + f".tmp{secrets.token_hex(4)}")
     try:
-        tmp_path.write_text(json.dumps(payload, indent=2, allow_nan=False), encoding="utf-8")
+        tmp_path.write_text(
+            json.dumps(payload, indent=2, allow_nan=False), encoding="utf-8", newline="\n"
+        )
         last_exc: OSError | None = None
         for attempt in range(_REPLACE_MAX_ATTEMPTS):
             try:
@@ -60,7 +62,7 @@ def atomic_write_json(path: Path, payload: object) -> None:
 
 def append_jsonl(path: Path, line_payload: object) -> None:
     try:
-        with path.open("a", encoding="utf-8") as fh:
+        with path.open("a", encoding="utf-8", newline="\n") as fh:
             fh.write(json.dumps(line_payload, allow_nan=False))
             fh.write("\n")
             fh.flush()

@@ -73,6 +73,18 @@ def test_export_completed_run_produces_self_contained_bundle(tmp_path: Path) -> 
     assert original_manifest["runId"] == manifest.run_id
 
 
+def test_recorded_and_exported_files_use_lf_on_every_platform(tmp_path: Path) -> None:
+    # Bundle bytes are hashed into catalogs, so they must not depend on the
+    # platform's text-mode newline translation.
+    run_dir = make_completed_run(tmp_path)
+    target_dir = tmp_path / "export" / "bundle"
+    export_run(run_dir, target_dir)
+
+    for folder in (run_dir, target_dir):
+        for name in ("manifest.json", "events.jsonl", "snapshots.json"):
+            assert b"\r" not in (folder / name).read_bytes(), folder / name
+
+
 def test_export_rejects_existing_target_without_overwrite(tmp_path: Path) -> None:
     run_dir = make_completed_run(tmp_path)
     target_dir = tmp_path / "export" / "bundle"

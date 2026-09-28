@@ -470,6 +470,7 @@ def export_browser_catalog(batch_dir: Path, target: Path) -> None:
         with tempfile.NamedTemporaryFile(
             mode="w",
             encoding="utf-8",
+            newline="\n",
             prefix=f".{target.name}-",
             suffix=".tmp",
             dir=target.parent,

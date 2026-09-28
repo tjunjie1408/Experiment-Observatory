@@ -351,7 +351,7 @@ def export_run(run_dir: Path, target_dir: Path) -> ManifestArtifact:
         tmp_dir = Path(tmp_name)
 
         (tmp_dir / "manifest.json").write_text(
-            manifest.model_dump_json(by_alias=True, indent=2), encoding="utf-8"
+            manifest.model_dump_json(by_alias=True, indent=2), encoding="utf-8", newline="\n"
         )
         (tmp_dir / "snapshots.json").write_text(
             json.dumps(
@@ -360,8 +360,9 @@ def export_run(run_dir: Path, target_dir: Path) -> ManifestArtifact:
                 allow_nan=False,
             ),
             encoding="utf-8",
+            newline="\n",
         )
-        with (tmp_dir / "events.jsonl").open("w", encoding="utf-8") as fh:
+        with (tmp_dir / "events.jsonl").open("w", encoding="utf-8", newline="\n") as fh:
             for event in events:
                 fh.write(event.model_dump_json(by_alias=True))
                 fh.write("\n")
