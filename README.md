@@ -1,18 +1,77 @@
 # AI Experiment Observatory
 
-A continuously growing, runnable, inspectable, reproducible machine learning learning archive: each new model ships as a complete experiment unit with a real question, real computation, real validation, and a written explanation, replayed in a web UI that shows how the model fits data, forms predictions, and where it fails.
+A local, reproducible machine-learning lab. Each model is implemented by hand,
+trained on a fixed dataset, and recorded step by step. A static web app then
+replays the recording: how the fit, clusters, or tree evolve, what each sample is
+predicted as, and where a run diverges or ends worse than another.
 
-**Current status:** V0 linear regression training, recording, export, and static replay are implemented. M4 adds an optional local-only FastAPI service for one asynchronous training worker, persisted SSE events, and explicit cancellation recovery. M5 adds a handwritten two-dimensional Lloyd K-means experiment, schema-v3 replay, and a controlled five-seed initialization study. M6 adds a handwritten CART decision tree on the UCI Breast Cancer Wisconsin (Diagnostic) dataset, schema-v4 replay, and a five-depth study. The static Svelte replay remains independent of the service. A first D1 dataset slice uses the openly licensed UCI Auto MPG dataset for verified one-feature training and backward-compatible schema-v2 replay export. Local MLflow tracking, Parquet/DuckDB analysis, and isolated-directory restoration are implemented. Both datasets restore from Google Drive into an empty cache (verified 2026-09-24). MLflow databases and Parquet batches are local-only and are not part of that remote recovery.
+**Current status:** four experiment units are implemented and shipped as replay
+bundles in the static site:
 
-- [PROJECT_IMPLEMENTATION_PLAN_V0.1.md](docs/PROJECT_IMPLEMENTATION_PLAN_V0.1.md) — initial plan and technology choices
-- [BEHAVIOR_SPECIFICATION_V0.2.md](docs/BEHAVIOR_SPECIFICATION_V0.2.md) — V0 behavior spec and acceptance conditions
-- [PHASE_ACCEPTANCE_PLAN_V0.2.md](docs/PHASE_ACCEPTANCE_PLAN_V0.2.md) — phased tasks and evidence log
-- [MODEL_BEHAVIOR_CATALOG_V0.3.md](docs/MODEL_BEHAVIOR_CATALOG_V0.3.md) / [VERSION_ACCEPTANCE_ROADMAP_V0.3.md](docs/VERSION_ACCEPTANCE_ROADMAP_V0.3.md) — model catalog and version roadmap
+- gradient-descent linear regression on synthetic data (three learning rates)
+- the same linear model on UCI Auto MPG (weight → mpg)
+- a handwritten two-dimensional Lloyd K-means on synthetic blobs (five
+  initialization seeds)
+- a handwritten Gini CART classifier on UCI Breast Cancer Wisconsin
+  (Diagnostic) (depths 1–5)
+
+The static site needs no Python. Optional local extras are a FastAPI service
+(one training worker, persisted SSE events, cancellation), MLflow tracking, and a
+Parquet/DuckDB catalog. The results below come straight from the shipped bundles.
+Planning notes and acceptance records are kept outside this repository.
+
+## Shipped studies
+
+Every number below can be recomputed from the bundle in `web/public/runs/<id>/`.
+Each is a single fixed run or cohort, not a benchmark.
+
+**Linear regression learning rate** (`converge`, `slow`, `diverge`). Same 50
+synthetic samples, same start (b = w = 0) and 80 updates; only the learning rate
+differs. The initial MSE is 13.119 for all three. After 80 updates:
+
+| Bundle | Learning rate | Final train MSE |
+| --- | --- | --- |
+| `converge` | 0.25 | 0.05161, equal to the least-squares optimum |
+| `slow` | 0.001 | 5.456, still descending |
+| `diverge` | 1.5 | 3.25 × 10^141, finite but diverged |
+
+**Auto MPG** (`auto-mpg`). Weight predicting mpg on all 398 rows. After 200 updates
+at learning rate 0.1, train MSE is 18.781, matching the closed-form least-squares
+fit. There is no held-out split, so this shows the mechanism and data lineage,
+not generalization.
+
+**K-means initialization** (`kmeans-seed-0` … `kmeans-seed-4`). Same 70 points and
+k = 3; only the initialization seed differs. All five runs stop with stable
+assignments, at two different final partitions:
+
+| Seeds | Final inertia |
+| --- | --- |
+| 0, 1, 4 | 158.83 |
+| 2, 3 | 195.98 |
+
+On this data, the final partition depends on the initialization, and seeds 2
+and 3 stop at a worse local optimum.
+
+**Decision-tree depth** (`tree-depth-1` … `tree-depth-5`). WDBC, 397 training and
+172 validation rows from one fixed stratified split, no scaling. Every depth
+splits the root on `radius_worst` ≤ 16.790.
+
+| Depth | Nodes | Train accuracy | Validation accuracy |
+| --- | --- | --- | --- |
+| 1 | 3 | 370/397 (0.9320) | 155/172 (0.9012) |
+| 2 | 7 | 381/397 (0.9597) | 160/172 (0.9302) |
+| 3 | 13 | 389/397 (0.9798) | 162/172 (0.9419) |
+| 4 | 17 | 393/397 (0.9899) | 164/172 (0.9535) |
+| 5 | 25 | 396/397 (0.9975) | 161/172 (0.9360) |
+
+Train accuracy rises with depth. Validation accuracy peaks at depth 4 and drops
+by 3 rows at depth 5. That drop is within the spread caused by exact Gini ties,
+so it is not evidence of overfitting. None of these results extend beyond this
+one split.
 
 ## Layout
 
 ```text
-docs/                 project plans, acceptance evidence, model notes
 datasets/auto-mpg/    immutable source, processed data, and version manifests
 datasets/breast-cancer/ real WDBC source, canonical features and fixed split
 src/observatory/
@@ -46,7 +105,7 @@ web/                  Svelte 5 static replay application and frontend tests
 - Static type checking: [mypy](https://mypy-lang.org/)
 - Testing: [pytest](https://docs.pytest.org/)
 - Frontend: Node.js and npm. No version is pinned; verified with Node 26.3.0 and
-  npm 12.0.0. Dependencies are locked in `web/package-lock.json`.
+  npm 12.0.0; CI uses Node 26. Dependencies are locked in `web/package-lock.json`.
 
 ```bash
 uv sync --locked
@@ -192,3 +251,19 @@ verified on 2026-09-24. A fresh clone with an empty cache restored both datasets
 ```bash
 uv run pre-commit install
 ```
+
+## Limitations
+
+- Development and every manual check ran on Windows 11. CI runs the web tests,
+  typecheck, build and Python static checks on Linux, but not pytest, because
+  the dataset tests need DVC data that CI cannot pull.
+- Restoring the datasets from Google Drive needs access granted by the project
+  owner. The raw files can also be downloaded from the UCI URLs in each version
+  manifest; the pinned hashes reject changed bytes.
+- Each study uses one fixed dataset version, split and configuration. There is
+  no hyperparameter search, cross-validation or held-out test set, and the
+  project makes no accuracy or speed claims beyond the tables above.
+- No resource limits are enforced. Every step is recorded without sampling, so
+  very large `n_samples` or `n_updates` produce large bundles and long runs.
+- Ctrl+C cancellation of a CLI run is not covered by an automated test (only
+  service cancellation and tree checkpoint cancellation are).
