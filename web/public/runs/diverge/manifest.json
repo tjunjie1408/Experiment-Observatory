@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "runId": "linear-lr-diverge-20260912T110647965164-a3c75e77",
+  "runId": "linear-lr-diverge-20260929T113120345177-97d46308",
   "experimentId": "linear-lr-diverge",
-  "createdAt": "2026-09-12T11:06:47.965164+00:00",
+  "createdAt": "2026-09-29T11:31:20.345684+00:00",
   "status": "completed",
   "stopReason": "max_steps",
   "lastValidStep": 80,
@@ -182,7 +182,7 @@
     "nUpdates": 80
   },
   "codeProvenance": {
-    "gitCommit": "f206fa30d91e76dcc5262239959f9b490606ac6e",
+    "gitCommit": "377405617f67c4ccdf6d9a99c25cd358353c7841",
     "gitDirty": false,
     "unavailableReason": null
   },

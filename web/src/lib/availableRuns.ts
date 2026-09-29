@@ -26,21 +26,21 @@ export interface AvailableRun {
 export const AVAILABLE_RUNS: AvailableRun[] = [
   {
     id: "converge",
-    runId: "linear-lr-converge-20260912T110646751677-d8d354d9",
+    runId: "linear-lr-converge-20260929T113118602574-b7e83605",
     label: "Converge (lr=0.25)",
     path: "runs/converge",
     comparisonGroup: "synthetic-learning-rate",
   },
   {
     id: "slow",
-    runId: "linear-lr-slow-20260912T110647335452-0a965ade",
+    runId: "linear-lr-slow-20260929T113119526218-e1402653",
     label: "Slow (lr=0.001)",
     path: "runs/slow",
     comparisonGroup: "synthetic-learning-rate",
   },
   {
     id: "diverge",
-    runId: "linear-lr-diverge-20260912T110647965164-a3c75e77",
+    runId: "linear-lr-diverge-20260929T113120345177-97d46308",
     label: "Diverge (lr=1.5)",
     path: "runs/diverge",
     comparisonGroup: "synthetic-learning-rate",

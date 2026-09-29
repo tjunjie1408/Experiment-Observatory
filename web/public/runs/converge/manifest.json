@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "runId": "linear-lr-converge-20260912T110646751677-d8d354d9",
+  "runId": "linear-lr-converge-20260929T113118602574-b7e83605",
   "experimentId": "linear-lr-converge",
-  "createdAt": "2026-09-12T11:06:46.751677+00:00",
+  "createdAt": "2026-09-29T11:31:18.603574+00:00",
   "status": "completed",
   "stopReason": "max_steps",
   "lastValidStep": 80,
@@ -182,7 +182,7 @@
     "nUpdates": 80
   },
   "codeProvenance": {
-    "gitCommit": "f206fa30d91e76dcc5262239959f9b490606ac6e",
+    "gitCommit": "377405617f67c4ccdf6d9a99c25cd358353c7841",
     "gitDirty": false,
     "unavailableReason": null
   },

@@ -37,17 +37,15 @@ const TREE_DEPTH_RUN_IDS = AVAILABLE_RUNS.filter(
 ).map((run) => run.id);
 
 /**
- * True if `commit` resolves to an actual object in this repository's git
- * history. Uses `git cat-file -e`, which exits 0 iff the object exists
- * and is readable, without printing its contents. This is the check that
- * closes the gap the previous version of this test left open: a
- * plausible-looking but fabricated or dangling `gitCommit` value (e.g.
- * copy-pasted from a different clone, or from a rebased/deleted branch)
- * would pass the old `gitCommit !== null` assertion but fail this one.
+ * True if `commit` is an ancestor of the checked-out HEAD. Mere object
+ * existence (`git cat-file -e`) is not enough: a commit orphaned by a
+ * history rewrite can linger in one local object store while being absent
+ * from every branch and from any fresh clone, which is exactly how the
+ * synthetic bundles once passed locally and failed in CI.
  */
-function commitExistsInRepo(commit: string): boolean {
+function commitIsInHistory(commit: string): boolean {
   try {
-    execFileSync("git", ["cat-file", "-e", `${commit}^{commit}`], {
+    execFileSync("git", ["merge-base", "--is-ancestor", commit, "HEAD"], {
       cwd: REPO_ROOT,
       stdio: "ignore",
     });
@@ -101,8 +99,8 @@ describe("shipped demo bundles (public/runs)", () => {
 
       // A bundle's provenance must either point at a real, clean, resolvable
       // commit, or explicitly say why it can't. "Resolvable" is verified
-      // here (not deferred to a separate CI step) via `git cat-file -e`
-      // against this checkout's object database: a dirty-tree export
+      // here (not deferred to a separate CI step) via `git merge-base --is-ancestor`
+      // against this checkout's history: a dirty-tree export
       // (gitDirty === true) or a fabricated/dangling commit hash would both
       // fail this test, which is exactly the defect class this test exists
       // to prevent from recurring.
@@ -110,7 +108,7 @@ describe("shipped demo bundles (public/runs)", () => {
         const { gitCommit, gitDirty } = manifest.codeProvenance;
         expect(gitCommit).not.toBeNull();
         expect(gitDirty).toBe(false);
-        expect(commitExistsInRepo(gitCommit as string)).toBe(true);
+        expect(commitIsInHistory(gitCommit as string)).toBe(true);
       }
     },
   );
