@@ -242,6 +242,29 @@ def test_cli_common_tracking_hook_keeps_runtime_independent(tmp_path: Path) -> N
         assert parsed.tracking_database == str(db)
 
 
+def test_cli_tracking_failure_keeps_the_run_and_exits_nonzero(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    runs_root = tmp_path / "runs"
+    blocker = tmp_path / "not-a-directory"
+    blocker.write_text("", encoding="utf-8")
+    args = build_parser().parse_args(
+        [
+            "run",
+            str(ROOT / "configs/linear/slow.yaml"),
+            "--runs-root",
+            str(runs_root),
+            "--tracking-database",
+            str(blocker / "mlflow.db"),
+        ]
+    )
+    assert args.func(args) == 1
+    assert "saved, but tracking sync failed" in capsys.readouterr().err
+    (run_dir,) = runs_root.iterdir()
+    assert json.loads((run_dir / "manifest.json").read_bytes())["status"] == "completed"
+    assert not (run_dir / "tracking.json").exists()
+
+
 def test_local_stack_rebuilds_in_another_directory(tmp_path: Path) -> None:
     old = tmp_path / "original"
     manifest = run_one(ROOT / "configs/linear/slow.yaml", old / "runs")
